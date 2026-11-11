@@ -184,7 +184,6 @@
   }
   .hint { font-size: 0.75rem; color: var(--text-dim); margin-top: 3px; }
 
-  /* ---------- СОСТАВ ---------- */
   .member-list { margin-top: 18px; display: flex; flex-direction: column; gap: 8px; }
   .member-row {
     display: flex;
@@ -220,7 +219,6 @@
   .member-row .role-employee { background: rgba(124,92,255,0.15); color: var(--accent); }
   .member-row .role-merc { background: rgba(255,92,108,0.15); color: var(--error); }
 
-  /* ---------- БАНК ---------- */
   .bank-total {
     text-align: center;
     font-size: 2.4rem;
@@ -278,7 +276,6 @@
   }
   .bank-player .bp-stats span b { color: var(--text); font-weight: 600; }
 
-  /* Цвета счёта */
   .bp-stats.balance-positive span b { color: var(--success); }
   .bp-stats.balance-zero span b { color: var(--text); }
   .bp-stats.balance-negative span,
@@ -318,7 +315,6 @@
   }
   .history-item .hist-date { color: var(--text-dim); }
 
-  /* ---------- КАСТОМНЫЕ ДИАЛОГИ ---------- */
   .dialog-overlay {
     position: fixed;
     inset: 0;
@@ -506,6 +502,11 @@
 
 <script>
 /* ============================================================
+   ВАЖНО: объявление $ должно быть ДО всех вызовов
+   ============================================================ */
+const $ = id => document.getElementById(id);
+
+/* ============================================================
    МИРТАЛИС — состояние и хранилище
    ============================================================ */
 
@@ -622,10 +623,20 @@ function updateDateDisplay() {
 }
 
 /* ============================================================
+   ВСПОМОГАТЕЛЬНОЕ (без $)
+   ============================================================ */
+
+function showError(id, msg) { $(id).textContent = msg || ''; }
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+function escapeAttr(s) { return String(s).replace(/"/g, '&quot;'); }
+function cssEscape(s) { return String(s).replace(/["\\]/g, '\\$&'); }
+
+/* ============================================================
    КАСТОМНЫЕ ДИАЛОГИ
    ============================================================ */
 
-// Аналог confirm() — возвращает Promise<boolean>
 function showConfirm(message, okText = 'Да', cancelText = 'Отмена') {
   return new Promise(resolve => {
     const overlay = document.createElement('div');
@@ -652,7 +663,6 @@ function showConfirm(message, okText = 'Да', cancelText = 'Отмена') {
   });
 }
 
-// Аналог prompt() — возвращает Promise<string|null>
 function showPrompt(message, defaultValue = '') {
   return new Promise(resolve => {
     const overlay = document.createElement('div');
@@ -764,7 +774,7 @@ function renderMembers() {
   });
 }
 
-async function addMember(name, role) {
+function addMember(name, role) {
   name = name.trim();
   if (!name) { showError('members-error', 'Введите имя'); return; }
   const existing = state.members.find(m => m.name.toLowerCase() === name.toLowerCase());
@@ -831,13 +841,11 @@ async function deleteMember(id) {
   if (!m) return;
   const ok = await showConfirm(`Удалить «${m.name}» навсегда? Это действие необратимо.`, 'Удалить', 'Отмена');
   if (!ok) return;
-  // Если у него остались деньги в банке — предупредим
   const acc = state.accounts[m.name];
   const balance = acc ? getAccountBalance(m.name) : 0;
   if (balance !== 0) {
     const ok2 = await showConfirm(`У него остался счёт в банке: ${formatMoney(balance)}. Счёт будет обнулён. Продолжить?`, 'Продолжить', 'Отмена');
     if (!ok2) return;
-    // Обнуляем счёт
     state.accounts[m.name] = { personalIn: 0, personalOut: 0, commonShare: 0, commonExpenseShare: 0 };
   }
   state.members = state.members.filter(x => x.id !== id);
@@ -1089,18 +1097,6 @@ $('btn-add-expense').addEventListener('click', () => {
   $('expense-amount').value = '';
   renderExpenses();
 });
-
-/* ============================================================
-   ВСПОМОГАТЕЛЬНОЕ
-   ============================================================ */
-
-const $ = id => document.getElementById(id);
-function showError(id, msg) { $(id).textContent = msg || ''; }
-function escapeHtml(s) {
-  return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-}
-function escapeAttr(s) { return String(s).replace(/"/g, '&quot;'); }
-function cssEscape(s) { return String(s).replace(/["\\]/g, '\\$&'); }
 
 /* ============================================================
    МОДАЛЬНЫЕ ОКНА
