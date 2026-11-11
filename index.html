@@ -173,6 +173,8 @@
   button.danger:hover { background: #d04050; }
   button.success-btn { background: #2f8f4e; }
   button.success-btn:hover { background: #3aa860; }
+  button.warn { background: #b06a20; }
+  button.warn:hover { background: #d08030; }
 
   .error {
     color: var(--error);
@@ -228,9 +230,26 @@
     text-align: center;
     font-size: 0.85rem;
     color: var(--text-dim);
-    margin-bottom: 16px;
+    margin-bottom: 8px;
   }
   .bank-sub span { color: var(--text); font-weight: 600; }
+
+  .bank-expense-info {
+    text-align: center;
+    font-size: 0.85rem;
+    margin-bottom: 16px;
+    padding: 8px 12px;
+    border-radius: 8px;
+    background: rgba(255,184,107,0.08);
+    border: 1px solid rgba(255,184,107,0.25);
+    color: var(--warning);
+  }
+  .bank-expense-info.paid {
+    background: rgba(74,222,128,0.08);
+    border-color: rgba(74,222,128,0.25);
+    color: var(--success);
+  }
+  .bank-expense-info b { color: var(--text); }
 
   .bank-actions {
     display: flex;
@@ -312,6 +331,15 @@
     font-size: 0.88rem;
   }
   .history-item .hist-date { color: var(--text-dim); }
+
+  .expense-total-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 16px;
+    font-size: 1.05rem;
+  }
+  .expense-total-row b { color: var(--gold); }
 
   .dialog-overlay {
     position: fixed;
@@ -425,6 +453,7 @@
     <h2>Гильдийский банк</h2>
     <div class="bank-total" id="bank-total">0 ЗМ</div>
     <div class="bank-sub" id="bank-sub">Общих доходов: 0 · Общих трат: 0</div>
+    <div class="bank-expense-info" id="bank-expense-info">—</div>
     <div class="bank-actions">
       <button id="btn-common-income" class="secondary">Общий доход</button>
       <button id="btn-common-expense" class="secondary">Общая трата</button>
@@ -474,9 +503,14 @@
     <div class="error" id="expenses-error"></div>
     <div class="section-title">Список расходов</div>
     <div id="expenses-list"></div>
-    <div style="text-align: center; margin-top: 16px; font-size: 1.1rem;">
-      Итого в месяц: <b id="expenses-total" style="color: var(--gold);">0 ЗМ</b>
+    <div class="expense-total-row">
+      <span>Итого в месяц:</span>
+      <b id="expenses-total">0 ЗМ</b>
     </div>
+    <div class="actions" style="margin-top: 16px;">
+      <button id="btn-pay-expenses" class="warn">Оплатить</button>
+    </div>
+    <div class="error" id="pay-error"></div>
   </div>
 </div>
 
@@ -518,9 +552,11 @@ function defaultState() {
     date: { year: 1852, month: 11, day: 27, hours: 12, minutes: 30 },
     members: [],
     accounts: {},
+    orphanFunds: 0,            // средства без вкладчика (после «Убрать»)
     totals: { commonIncome: 0, commonExpense: 0 },
     history: [],
-    expenses: []
+    expenses: [],
+    expensesPaidUntil: null    // { year, month } — до какого месяца оплачено включительно
   };
 }
 
@@ -533,9 +569,11 @@ function loadState() {
     const s = JSON.parse(raw);
     if (!s.date || !Array.isArray(s.members)) return defaultState();
     if (!s.accounts) s.accounts = {};
+    if (typeof s.orphanFunds !== 'number') s.orphanFunds = 0;
     if (!s.totals) s.totals = { commonIncome: 0, commonExpense: 0 };
     if (!Array.isArray(s.history)) s.history = [];
     if (!Array.isArray(s.expenses)) s.expenses = [];
+    if (!s.expensesPaidUntil) s.expensesPaidUntil = null;
     s.members.forEach(m => { if (typeof m.fired !== 'boolean') m.fired = false; });
     return s;
   } catch {
@@ -863,7 +901,9 @@ function getTotalAccounts() {
   return sum;
 }
 
-function getBankTotal() { return getTotalAccounts(); }
+function getBankTotal() {
+  return getTotalAccounts() + (state.orphanFunds || 0);
+}
 
 function getPositiveTotal() {
   let sum = 0;
@@ -877,9 +917,13 @@ function getPositiveTotal() {
 function renderBank() {
   const total = getBankTotal();
   $('bank-total').textContent = formatMoney(total);
+  const orphan = state.orphanFunds || 0;
   $('bank-sub').innerHTML =
     `Общих доходов: <span>${formatMoney(state.totals.commonIncome)}</span> · ` +
-    `Общих трат: <span>${formatMoney(state.totals.commonExpense)}</span>`;
+    `Общих трат: <span>${formatMoney(state.totals.commonExpense)}</span>` +
+    (orphan > 0 ? ` · Средства без вкладчика: <span>${formatMoney(orphan)}</span>` : '');
+
+  renderExpenseInfo();
 
   const names = new Set();
   state.members.forEach(m => { if (m.role === 'Игрок') names.add(m.name); });
@@ -965,6 +1009,12 @@ function renderBank() {
   container.querySelectorAll('[data-remove-account]').forEach(btn => {
     btn.addEventListener('click', () => {
       const name = btn.dataset.removeAccount;
+      const balance = getAccountBalance(name);
+      // Деньги не исчезают — переходят в «средства без вкладчика»
+      if (balance !== 0) {
+        state.orphanFunds = (state.orphanFunds || 0) + balance;
+        logHistory(`Вклад игрока ${name} (${formatMoney(balance)}) перешёл в средства без вкладчика`);
+      }
       delete state.accounts[name];
       saveState();
       renderBank();
@@ -1040,9 +1090,11 @@ async function resetBank() {
   const ok = await showConfirm('Сбросить банк полностью? Все счета (включая удалённых вкладчиков), долги, общие суммы и история операций будут стёрты. Состав гильдии останется.');
   if (!ok) return;
   state.accounts = {};
+  state.orphanFunds = 0;
   getPlayers().forEach(p => ensureAccount(p.name));
   state.totals = { commonIncome: 0, commonExpense: 0 };
   state.history = [];
+  state.expensesPaidUntil = null;
   saveState();
   renderBank();
   showError('bank-error', '');
@@ -1051,6 +1103,44 @@ async function resetBank() {
 /* ============================================================
    РАСХОДЫ
    ============================================================ */
+
+function getMonthlyExpensesTotal() {
+  let total = 0;
+  state.expenses.forEach(e => {
+    total += e.period === 'daily' ? e.amount * 30 : e.amount;
+  });
+  return total;
+}
+
+// Проверка: оплачен ли текущий месяц
+function isCurrentMonthPaid() {
+  if (!state.expensesPaidUntil) return false;
+  const d = state.date;
+  const p = state.expensesPaidUntil;
+  return (p.year > d.year) || (p.year === d.year && p.month >= d.month);
+}
+
+function renderExpenseInfo() {
+  const info = $('bank-expense-info');
+  const total = getMonthlyExpensesTotal();
+  if (total <= 0) {
+    info.style.display = 'none';
+    info.textContent = '';
+    return;
+  }
+  info.style.display = 'block';
+
+  if (isCurrentMonthPaid()) {
+    const p = state.expensesPaidUntil;
+    info.className = 'bank-expense-info paid';
+    info.innerHTML = `Расходы оплачены до <b>${MONTHS[p.month - 1]} ${p.year}</b>`;
+  } else {
+    const d = state.date;
+    const daysLeft = daysInMonth(d.month) - d.day + 1;
+    info.className = 'bank-expense-info';
+    info.innerHTML = `Необходимо внести <b>${formatMoney(total)}</b> на расходы Гильдии в течение <b>${daysLeft}</b> дн.`;
+  }
+}
 
 function renderExpenses() {
   const list = $('expenses-list');
@@ -1079,6 +1169,7 @@ function renderExpenses() {
       state.expenses.splice(parseInt(btn.dataset.delExpense, 10), 1);
       saveState();
       renderExpenses();
+      renderBank();
     });
   });
 }
@@ -1095,7 +1186,59 @@ $('btn-add-expense').addEventListener('click', () => {
   $('expense-name').value = '';
   $('expense-amount').value = '';
   renderExpenses();
+  renderBank();
 });
+
+// Оплата расходов
+async function payExpenses() {
+  showError('pay-error', '');
+  const total = getMonthlyExpensesTotal();
+  if (total <= 0) { showError('pay-error', 'Нет расходов для оплаты'); return; }
+  const bank = getBankTotal();
+  if (total > bank) { showError('pay-error', 'В банке недостаточно средств'); return; }
+
+  // Сначала снимаем с «средств без вкладчика», если есть
+  let remaining = total;
+  if (state.orphanFunds > 0) {
+    const take = Math.min(state.orphanFunds, remaining);
+    state.orphanFunds -= take;
+    remaining -= take;
+  }
+  // Остаток — как общая трата (поровну на игроков)
+  if (remaining > 0) {
+    const players = getPlayers();
+    if (!players.length) { showError('pay-error', 'Нет игроков для распределения траты'); return; }
+    const per = floorTenths(remaining / players.length);
+    players.forEach(p => {
+      ensureAccount(p.name).commonExpenseShare += per;
+    });
+    state.totals.commonExpense += per * players.length;
+  } else {
+    state.totals.commonExpense += total;
+  }
+
+  // Сдвигаем дату оплаты
+  const d = state.date;
+  if (!state.expensesPaidUntil) {
+    // Первая оплата — за следующий месяц
+    let m = d.month + 1, y = d.year;
+    if (m > 12) { m = 1; y += 1; }
+    state.expensesPaidUntil = { year: y, month: m };
+  } else {
+    // Следующий месяц после уже оплаченного
+    let m = state.expensesPaidUntil.month + 1, y = state.expensesPaidUntil.year;
+    if (m > 12) { m = 1; y += 1; }
+    state.expensesPaidUntil = { year: y, month: m };
+  }
+
+  logHistory(`Гильдия оплатила расходы: ${formatMoney(total)}`);
+  saveState();
+  renderBank();
+  renderExpenses();
+  renderExpenseInfo();
+}
+
+$('btn-pay-expenses').addEventListener('click', payExpenses);
 
 /* ============================================================
    МОДАЛЬНЫЕ ОКНА
@@ -1109,7 +1252,7 @@ function openModal(name) {
   if (name === 'bank') renderBank();
   if (name === 'date') { fillDateInputs(); updateDateDisplay(); }
   if (name === 'history') renderHistory();
-  if (name === 'expenses') renderExpenses();
+  if (name === 'expenses') { renderExpenses(); showError('pay-error', ''); }
 }
 
 function closeModal(el) { el.style.display = 'none'; }
@@ -1173,17 +1316,17 @@ function fillDateInputs() {
 
 $('btn-short-rest').addEventListener('click', () => {
   state.date = addMinutes(state.date, 60);
-  saveState(); updateDateDisplay(); fillDateInputs();
+  saveState(); updateDateDisplay(); fillDateInputs(); renderExpenseInfo();
 });
 
 $('btn-long-rest').addEventListener('click', () => {
   state.date = addMinutes(state.date, 8 * 60);
-  saveState(); updateDateDisplay(); fillDateInputs();
+  saveState(); updateDateDisplay(); fillDateInputs(); renderExpenseInfo();
 });
 
 $('btn-next-day').addEventListener('click', () => {
   state.date = nextDayMorning(state.date);
-  saveState(); updateDateDisplay(); fillDateInputs();
+  saveState(); updateDateDisplay(); fillDateInputs(); renderExpenseInfo();
 });
 
 $('btn-set-date').addEventListener('click', () => {
@@ -1202,7 +1345,7 @@ $('btn-set-date').addEventListener('click', () => {
     return;
   }
   state.date = { year, month, day, hours: hh, minutes: mm };
-  saveState(); updateDateDisplay(); fillDateInputs();
+  saveState(); updateDateDisplay(); fillDateInputs(); renderExpenseInfo();
 });
 
 /* ============================================================
