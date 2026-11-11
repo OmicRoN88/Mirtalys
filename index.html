@@ -556,8 +556,8 @@ function defaultState() {
     totals: { commonIncome: 0, commonExpense: 0 },
     history: [],
     expenses: [],
-    expensesLastPaidMonth: null,   // { year, month } — последний оплаченный месяц
-    expensesLastPaidAmount: 0      // сколько было оплачено в последний раз (полная месячная сумма на тот момент)
+    expensesLastPaidMonth: null,
+    expensesLastPaidAmount: 0
   };
 }
 
@@ -923,7 +923,7 @@ function renderBank() {
   $('bank-sub').innerHTML =
     `Общих доходов: <span>${formatMoney(state.totals.commonIncome)}</span> · ` +
     `Общих трат: <span>${formatMoney(state.totals.commonExpense)}</span>` +
-    (orphan > 0 ? ` · Средства без вкладчика: <span>${formatMoney(orphan)}</span>` : '');
+    (orphan !== 0 ? ` · Средства без вкладчика: <span>${formatMoney(orphan)}</span>` : '');
 
   renderExpenseInfo();
 
@@ -1058,13 +1058,21 @@ function commonIncome(amount) {
   const players = getPlayers();
   if (!players.length) { showError('bank-error', 'Нет игроков'); return; }
   if (amount <= 0) { showError('bank-error', 'Сумма должна быть > 0'); return; }
+
   const per = floorTenths(amount / players.length);
+  const distributed = roundTenths(per * players.length);
+  const remainder = roundTenths(amount - distributed);
+
   players.forEach(p => {
     ensureAccount(p.name).commonShare += per;
   });
-  const distributed = per * players.length;
-  state.totals.commonIncome += distributed;
-  logHistory(`Гильдия пополнила счёт на ${formatMoney(distributed)}`);
+  // Остаток уходит в «средства без вкладчика» (комиссия)
+  if (remainder > 0.001) {
+    state.orphanFunds = roundTenths((state.orphanFunds || 0) + remainder);
+  }
+  // В статистику пишем полную введённую сумму
+  state.totals.commonIncome = roundTenths(state.totals.commonIncome + amount);
+  logHistory(`Гильдия пополнила счёт на ${formatMoney(amount)}`);
   saveState();
   renderBank();
 }
@@ -1076,13 +1084,20 @@ function commonExpense(amount) {
   if (amount <= 0) { showError('bank-error', 'Сумма должна быть > 0'); return; }
   const bank = getBankTotal();
   if (amount > bank) { showError('bank-error', 'В банке недостаточно средств'); return; }
+
   const per = floorTenths(amount / players.length);
+  const distributed = roundTenths(per * players.length);
+  const remainder = roundTenths(amount - distributed);
+
   players.forEach(p => {
     ensureAccount(p.name).commonExpenseShare += per;
   });
-  const distributed = per * players.length;
-  state.totals.commonExpense += distributed;
-  logHistory(`Гильдия потратила со счёта ${formatMoney(distributed)}`);
+  // Остаток списываем из «средств без вкладчика» (может уйти в минус)
+  if (remainder > 0.001) {
+    state.orphanFunds = roundTenths((state.orphanFunds || 0) - remainder);
+  }
+  state.totals.commonExpense = roundTenths(state.totals.commonExpense + amount);
+  logHistory(`Гильдия потратила со счёта ${formatMoney(amount)}`);
   saveState();
   renderBank();
 }
@@ -1111,20 +1126,17 @@ function getMonthlyExpensesTotal() {
   state.expenses.forEach(e => {
     total += e.period === 'daily' ? e.amount * 30 : e.amount;
   });
-  return total;
+  return roundTenths(total);
 }
 
-// Сколько месяцев не оплачено (включая текущий, если не оплачен)
 function getUnpaidMonths() {
   const d = state.date;
   const p = state.expensesLastPaidMonth;
-  if (!p) return 1; // никогда не платили — считаем 1 месяц (текущий)
-  // Разница в месяцах между текущим и последним оплаченным
+  if (!p) return 1;
   const diff = (d.year - p.year) * 12 + (d.month - p.month);
-  return Math.max(0, diff); // 0 — текущий оплачен
+  return Math.max(0, diff);
 }
 
-// Сколько дней до 1-го числа следующего месяца
 function daysUntilNextMonth() {
   const d = state.date;
   return daysInMonth(d.month) - d.day + 1;
@@ -1144,8 +1156,7 @@ function renderExpenseInfo() {
   const daysLeft = daysUntilNextMonth();
 
   if (unpaid === 0) {
-    // Текущий месяц оплачен. Проверим, не добавили ли новые расходы
-    const remainder = total - (state.expensesLastPaidAmount || 0);
+    const remainder = roundTenths(total - (state.expensesLastPaidAmount || 0));
     if (remainder > 0.001) {
       info.className = 'bank-expense-info';
       info.innerHTML = `Необходимо внести <b>${formatMoney(remainder)}</b> на расходы Гильдии в течение <b>${daysLeft}</b> дн.`;
@@ -1154,11 +1165,10 @@ function renderExpenseInfo() {
       let m = d.month + 1, y = d.year;
       if (m > 12) { m = 1; y += 1; }
       info.className = 'bank-expense-info paid';
-      info.innerHTML = `Расходы оплачены до 1 <b>${MONTHS[m - 1]}</b>`;
+      info.innerHTML = `Расходы оплачены до: <span style="color: var(--text); font-weight: 600;">1 ${MONTHS[m - 1]}</span>`;
     }
   } else {
-    // Есть неоплаченные месяцы — сумма долга = total × unpaid
-    const debt = total * unpaid;
+    const debt = roundTenths(total * unpaid);
     info.className = 'bank-expense-info';
     info.innerHTML = `Необходимо внести <b>${formatMoney(debt)}</b> на расходы Гильдии в течение <b>${daysLeft}</b> дн.`;
   }
@@ -1185,7 +1195,7 @@ function renderExpenses() {
       <button class="danger small" data-del-expense="${i}">Удалить</button>
     </div>`;
   }).join('');
-  $('expenses-total').textContent = formatMoney(total);
+  $('expenses-total').textContent = formatMoney(roundTenths(total));
   list.querySelectorAll('[data-del-expense]').forEach(btn => {
     btn.addEventListener('click', () => {
       state.expenses.splice(parseInt(btn.dataset.delExpense, 10), 1);
@@ -1211,7 +1221,6 @@ $('btn-add-expense').addEventListener('click', () => {
   renderBank();
 });
 
-// Оплата расходов
 async function payExpenses() {
   showError('pay-error', '');
   const total = getMonthlyExpensesTotal();
@@ -1220,42 +1229,42 @@ async function payExpenses() {
   const unpaid = getUnpaidMonths();
   let amountToPay;
   if (unpaid === 0) {
-    // Текущий месяц оплачен — доплата за новые строки
-    amountToPay = total - (state.expensesLastPaidAmount || 0);
+    amountToPay = roundTenths(total - (state.expensesLastPaidAmount || 0));
     if (amountToPay <= 0.001) { showError('pay-error', 'Все расходы уже оплачены'); return; }
   } else {
-    amountToPay = total * unpaid;
+    amountToPay = roundTenths(total * unpaid);
   }
 
   const bank = getBankTotal();
   if (amountToPay > bank) { showError('pay-error', 'В банке недостаточно средств'); return; }
 
-  // Сначала списываем с «средств без вкладчика»
   let remaining = amountToPay;
   if (state.orphanFunds > 0) {
     const take = Math.min(state.orphanFunds, remaining);
-    state.orphanFunds -= take;
-    remaining -= take;
+    state.orphanFunds = roundTenths(state.orphanFunds - take);
+    remaining = roundTenths(remaining - take);
   }
-  // Остаток — как общая трата (поровну на игроков)
   if (remaining > 0) {
     const players = getPlayers();
     if (!players.length) { showError('pay-error', 'Нет игроков для распределения траты'); return; }
     const per = floorTenths(remaining / players.length);
+    const distributed = roundTenths(per * players.length);
+    const rem2 = roundTenths(remaining - distributed);
     players.forEach(p => {
       ensureAccount(p.name).commonExpenseShare += per;
     });
-    state.totals.commonExpense += per * players.length;
+    // Остаток от деления тоже уходит в orphanFunds (может уйти в минус)
+    if (rem2 > 0.001) {
+      state.orphanFunds = roundTenths((state.orphanFunds || 0) - rem2);
+    }
+    state.totals.commonExpense = roundTenths(state.totals.commonExpense + remaining);
   } else {
-    state.totals.commonExpense += amountToPay;
+    state.totals.commonExpense = roundTenths(state.totals.commonExpense + amountToPay);
   }
 
-  // Обновляем состояние оплаты
   if (unpaid === 0) {
-    // Доплата — просто обновляем сумму
     state.expensesLastPaidAmount = total;
   } else {
-    // Оплатили все долги — фиксируем текущий месяц как оплаченный
     state.expensesLastPaidMonth = { year: state.date.year, month: state.date.month };
     state.expensesLastPaidAmount = total;
   }
