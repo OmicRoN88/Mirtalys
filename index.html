@@ -20,6 +20,7 @@
     --success: #4ade80;
     --warning: #ffb86b;
     --gold: #ffd166;
+    --fired: #55556a;
   }
 
   body {
@@ -30,7 +31,6 @@
     line-height: 1.4;
   }
 
-  /* ---------- ШАПКА ---------- */
   .topbar {
     display: flex;
     justify-content: space-between;
@@ -49,7 +49,6 @@
   }
   .topbar .date-line strong { color: var(--text); font-weight: 600; }
 
-  /* ---------- ГЛАВНОЕ МЕНЮ ---------- */
   .main-menu {
     display: flex;
     flex-wrap: wrap;
@@ -77,7 +76,6 @@
     transform: translateY(-2px);
   }
 
-  /* ---------- МОДАЛЬНЫЕ ОКНА ---------- */
   .modal-overlay {
     position: fixed;
     inset: 0;
@@ -120,7 +118,6 @@
   }
   .modal-close:hover { color: var(--text); background: var(--panel-2); }
 
-  /* ---------- ФОРМЫ ---------- */
   .row {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
@@ -174,6 +171,8 @@
   button.small { padding: 6px 12px; font-size: 0.8rem; }
   button.danger { background: #b03040; }
   button.danger:hover { background: #d04050; }
+  button.success-btn { background: #2f8f4e; }
+  button.success-btn:hover { background: #3aa860; }
 
   .error {
     color: var(--error);
@@ -183,7 +182,7 @@
   }
   .hint { font-size: 0.75rem; color: var(--text-dim); margin-top: 3px; }
 
-  /* ---------- СПИСКИ ---------- */
+  /* ---------- СОСТАВ ---------- */
   .member-list { margin-top: 18px; display: flex; flex-direction: column; gap: 8px; }
   .member-row {
     display: flex;
@@ -196,6 +195,13 @@
     gap: 10px;
     flex-wrap: wrap;
   }
+  .member-row.fired {
+    background: #1a1a22;
+    border-color: #2a2a38;
+  }
+  .member-row.fired .member-name { color: var(--fired); text-decoration: line-through; }
+  .member-row.fired .member-role { background: rgba(85,85,106,0.2); color: var(--fired); }
+
   .member-row .member-name { font-weight: 600; }
   .member-row .member-role {
     font-size: 0.75rem;
@@ -243,6 +249,13 @@
     padding: 12px 14px;
     margin-bottom: 10px;
   }
+  .bank-player.fired {
+    background: #1a1a22;
+    border-color: #2a2a38;
+    opacity: 0.75;
+  }
+  .bank-player.fired .bp-name { color: var(--fired); text-decoration: line-through; }
+
   .bank-player .bp-head {
     display: flex;
     justify-content: space-between;
@@ -252,6 +265,7 @@
     margin-bottom: 8px;
   }
   .bank-player .bp-name { font-weight: 600; }
+
   .bank-player .bp-stats {
     display: flex;
     flex-wrap: wrap;
@@ -261,7 +275,14 @@
     margin-bottom: 8px;
   }
   .bank-player .bp-stats span b { color: var(--text); font-weight: 600; }
-  .bank-player .bp-stats .neg b { color: var(--error); }
+
+  /* Красная строка статистики при отрицательном счёте */
+  .bank-player .bp-stats.negative,
+  .bank-player .bp-stats.negative span,
+  .bank-player .bp-stats.negative span b {
+    color: var(--error) !important;
+  }
+
   .bank-player .bp-controls {
     display: flex;
     gap: 8px;
@@ -270,7 +291,6 @@
   }
   .bank-player .bp-controls input { width: 110px; }
 
-  /* ---------- ДАТА ---------- */
   .date-display-big {
     text-align: center;
     font-size: 1.3rem;
@@ -287,7 +307,6 @@
   }
   .date-actions button { min-width: 150px; }
 
-  /* ---------- ПРОЧЕЕ ---------- */
   .empty { color: var(--text-dim); font-style: italic; padding: 12px; text-align: center; }
   .section-title { font-size: 0.9rem; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.5px; margin: 18px 0 8px; }
 
@@ -300,13 +319,11 @@
 </head>
 <body>
 
-<!-- ================= ШАПКА ================= -->
 <div class="topbar">
   <div></div>
   <div class="date-line" id="topbar-date">—</div>
 </div>
 
-<!-- ================= ГЛАВНОЕ МЕНЮ ================= -->
 <div class="main-menu">
   <button data-modal="members">Состав</button>
   <button data-modal="date">Дата</button>
@@ -314,8 +331,6 @@
   <button data-modal="inventory">Инвентарь</button>
   <button data-modal="business">Бизнес</button>
 </div>
-
-<!-- ================= МОДАЛЬНЫЕ ОКНА ================= -->
 
 <!-- СОСТАВ -->
 <div class="modal-overlay" id="modal-members" style="display:none;">
@@ -349,15 +364,12 @@
   <div class="modal">
     <button class="modal-close" data-close>×</button>
     <h2>Дата и время</h2>
-
     <div class="date-display-big" id="date-display-big">—</div>
-
     <div class="date-actions">
       <button id="btn-short-rest" class="secondary">Короткий отдых (+1 ч)</button>
       <button id="btn-long-rest" class="secondary">Длительный отдых (+8 ч)</button>
       <button id="btn-next-day" class="secondary">Следующий день (07:00)</button>
     </div>
-
     <div class="section-title">Установить вручную</div>
     <div class="row">
       <div class="field">
@@ -387,16 +399,13 @@
   <div class="modal">
     <button class="modal-close" data-close>×</button>
     <h2>Гильдийский банк</h2>
-
     <div class="bank-total" id="bank-total">0 ЗМ</div>
-    <div class="bank-sub" id="bank-sub">Вкладов: 0 · Потрачено: 0 · Доходов: 0</div>
-
+    <div class="bank-sub" id="bank-sub">Общих доходов: 0 · Общих трат: 0</div>
     <div class="bank-actions">
       <button id="btn-common-income" class="secondary">Общий доход</button>
       <button id="btn-common-expense" class="secondary">Общая трата</button>
     </div>
-
-    <div class="section-title">Вкладчики (Игроки)</div>
+    <div class="section-title">Вкладчики</div>
     <div id="bank-players"></div>
     <div class="error" id="bank-error"></div>
   </div>
@@ -432,25 +441,14 @@ const MONTHS = ['января','февраля','марта','апреля','м�
 const WEEKDAYS = ['Воскресенье','Понедельник','Вторник','Среда',
                   'Четверг','Пятница','Суббота'];
 
-// Количество дней в месяцах (как в 2026 году, без високосных)
 const DAYS_IN_MONTH = [31,28,31,30,31,30,31,31,30,31,30,31];
 
-// Стартовое состояние
 function defaultState() {
   return {
-    date: {
-      year: 1852,
-      month: 11,     // 1..12
-      day: 27,       // 1..31
-      hours: 12,     // 0..23
-      minutes: 30    // 0..30 (шаг 30)
-    },
-    members: [],     // { id, name, role }
-    accounts: {},    // { name: { personalIn, personalOut, commonShare, commonExpenseShare } }
-    totals: {
-      commonIncome: 0,
-      commonExpense: 0
-    }
+    date: { year: 1852, month: 11, day: 27, hours: 12, minutes: 30 },
+    members: [],   // { id, name, role, fired }
+    accounts: {},  // { name: { personalIn, personalOut, commonShare, commonExpenseShare } }
+    totals: { commonIncome: 0, commonExpense: 0 }
   };
 }
 
@@ -461,10 +459,11 @@ function loadState() {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return defaultState();
     const s = JSON.parse(raw);
-    // Минимальная валидация
     if (!s.date || !Array.isArray(s.members)) return defaultState();
     if (!s.accounts) s.accounts = {};
     if (!s.totals) s.totals = { commonIncome: 0, commonExpense: 0 };
+    // миграция: добавим fired, если нет
+    s.members.forEach(m => { if (typeof m.fired !== 'boolean') m.fired = false; });
     return s;
   } catch {
     return defaultState();
@@ -487,27 +486,20 @@ function formatDate(date) {
   return `${wd}, ${date.day} ${month}, ${date.year} год. ${hh}:${mm}`;
 }
 
-// Индекс дня недели (0 = Воскресенье). Используем формулу Зеллера (григорианский календарь)
 function weekdayIndex(date) {
-  let y = date.year;
-  let m = date.month;
+  let y = date.year, m = date.month;
   const d = date.day;
   if (m < 3) { m += 12; y -= 1; }
   const K = y % 100;
   const J = Math.floor(y / 100);
   let h = (d + Math.floor(13 * (m + 1) / 5) + K + Math.floor(K / 4) +
            Math.floor(J / 4) + 5 * J) % 7;
-  // h: 0 = Суббота, 1 = Воскресенье, 2 = Понедельник, ...
-  // Переведём в 0 = Воскресенье
   const map = {0:6, 1:0, 2:1, 3:2, 4:3, 5:4, 6:5};
   return map[h];
 }
 
-function daysInMonth(month) {
-  return DAYS_IN_MONTH[month - 1];
-}
+function daysInMonth(month) { return DAYS_IN_MONTH[month - 1]; }
 
-// Прибавить минуты к дате (с переносом через часы/дни/месяцы/годы)
 function addMinutes(date, minutes) {
   const d = { ...date };
   d.minutes += minutes;
@@ -525,12 +517,10 @@ function nextDayMorning(date) {
   const d = { ...date };
   d.day += 1;
   if (d.day > daysInMonth(d.month)) {
-    d.day = 1;
-    d.month += 1;
+    d.day = 1; d.month += 1;
     if (d.month > 12) { d.month = 1; d.year += 1; }
   }
-  d.hours = 7;
-  d.minutes = 0;
+  d.hours = 7; d.minutes = 0;
   return d;
 }
 
@@ -553,7 +543,7 @@ const ROLE_CLASS = {
 };
 
 function getPlayers() {
-  return state.members.filter(m => m.role === 'Игрок');
+  return state.members.filter(m => m.role === 'Игрок' && !m.fired);
 }
 
 function renderMembers() {
@@ -562,37 +552,56 @@ function renderMembers() {
     list.innerHTML = '<div class="empty">Пока никого нет</div>';
     return;
   }
-  // Сортировка: по роли (в порядке ROLE_ORDER), внутри — по порядку добавления
+  // Сортировка: сначала активные (по роли), затем уволенные (по роли)
   const sorted = [...state.members].sort((a, b) => {
+    if (a.fired !== b.fired) return a.fired ? 1 : -1;
     return ROLE_ORDER.indexOf(a.role) - ROLE_ORDER.indexOf(b.role);
   });
   list.innerHTML = '';
   sorted.forEach(m => {
     const row = document.createElement('div');
-    row.className = 'member-row';
+    row.className = 'member-row' + (m.fired ? ' fired' : '');
+    const btn = m.fired
+      ? `<button class="success-btn small" data-hire="${m.id}">Нанять</button>`
+      : `<button class="danger small" data-fire="${m.id}">Уволить</button>`;
     row.innerHTML = `
       <div>
         <span class="member-name">${escapeHtml(m.name)}</span>
         <span class="member-role ${ROLE_CLASS[m.role] || ''}">${m.role}</span>
       </div>
-      <button class="danger small" data-fire="${m.id}">Уволить</button>
+      ${btn}
     `;
     list.appendChild(row);
   });
   list.querySelectorAll('[data-fire]').forEach(btn => {
     btn.addEventListener('click', () => fireMember(btn.dataset.fire));
   });
+  list.querySelectorAll('[data-hire]').forEach(btn => {
+    btn.addEventListener('click', () => hireMember(btn.dataset.hire));
+  });
 }
 
 function addMember(name, role) {
   name = name.trim();
   if (!name) { showError('members-error', 'Введите имя'); return; }
-  if (state.members.some(m => m.name.toLowerCase() === name.toLowerCase())) {
+  // Проверка: есть ли уже такое имя (включая уволенных)
+  const existing = state.members.find(m => m.name.toLowerCase() === name.toLowerCase());
+  if (existing) {
+    if (existing.fired) {
+      // Возвращаем уволенного
+      existing.fired = false;
+      existing.role = role;
+      saveState();
+      showError('members-error', '');
+      $('member-name').value = '';
+      renderMembers();
+      renderBank();
+      return;
+    }
     showError('members-error', 'Персонаж с таким именем уже есть');
     return;
   }
-  state.members.push({ id: Date.now() + '_' + Math.random().toString(36).slice(2, 7), name, role });
-  // Если это Игрок — создаём/восстанавливаем счёт
+  state.members.push({ id: Date.now() + '_' + Math.random().toString(36).slice(2, 7), name, role, fired: false });
   if (role === 'Игрок' && !state.accounts[name]) {
     state.accounts[name] = { personalIn: 0, personalOut: 0, commonShare: 0, commonExpenseShare: 0 };
   }
@@ -610,18 +619,28 @@ function fireMember(id) {
   const account = state.accounts[m.name];
   const balance = account ? getAccountBalance(m.name) : 0;
 
+  // Шаг 1: подтверждение увольнения
+  if (!confirm(`Уволить сотрудника «${m.name}»?`)) return;
+
+  // Шаг 2: если есть вклад — спросить, выдать ли деньги
   if (m.role === 'Игрок' && balance !== 0) {
-    const ok = confirm(`У сотрудника вклад в банке: ${formatMoney(balance)}. Выдать?`);
-    if (ok) {
-      // Списываем с банка, обнуляем счёт
-      if (account) {
-        account.personalIn -= balance; // корректировка, чтобы баланс стал 0
-      }
-    } else {
-      // Оставляем счёт как есть — он будет учтён в банке
+    const give = confirm(`У сотрудника вклад в банке: ${formatMoney(balance)}. Выдать?`);
+    if (give && account) {
+      account.personalIn -= balance; // обнуляем счёт
     }
   }
-  state.members.splice(idx, 1);
+
+  // Шаг 3: помечаем уволенным (не удаляем!)
+  m.fired = true;
+  saveState();
+  renderMembers();
+  renderBank();
+}
+
+function hireMember(id) {
+  const m = state.members.find(x => x.id === id);
+  if (!m) return;
+  m.fired = false;
   saveState();
   renderMembers();
   renderBank();
@@ -631,29 +650,33 @@ function fireMember(id) {
    БАНК
    ============================================================ */
 
-// Баланс счёта игрока
 function getAccountBalance(name) {
   const a = state.accounts[name];
   if (!a) return 0;
   return a.personalIn - a.personalOut + a.commonShare - a.commonExpenseShare;
 }
 
-// Сумма счетов всех игроков (включая уволенных, у кого есть счёт)
+// Сумма счетов всех (включая уволенных)
 function getTotalAccounts() {
   let sum = 0;
+  for (const name in state.accounts) sum += getAccountBalance(name);
+  return sum;
+}
+
+// Банк = сумма счетов всех (включая уволенных)
+function getBankTotal() { return getTotalAccounts(); }
+
+// Сумма ПОЛОЖИТЕЛЬНЫХ счетов (для расчёта долей, чтобы отрицательные не тянули вниз)
+function getPositiveTotal() {
+  let sum = 0;
   for (const name in state.accounts) {
-    sum += getAccountBalance(name);
+    const b = getAccountBalance(name);
+    if (b > 0) sum += b;
   }
   return sum;
 }
 
-// Банк = сумма счетов всех игроков (уволенные тоже входят)
-function getBankTotal() {
-  return getTotalAccounts();
-}
-
 function formatMoney(n) {
-  // Округление до 2 знаков, убираем .00
   const rounded = Math.round(n * 100) / 100;
   if (Number.isInteger(rounded)) return rounded + ' ЗМ';
   return rounded.toFixed(2) + ' ЗМ';
@@ -666,37 +689,57 @@ function renderBank() {
     `Общих доходов: <span>${formatMoney(state.totals.commonIncome)}</span> · ` +
     `Общих трат: <span>${formatMoney(state.totals.commonExpense)}</span>`;
 
-  const players = getPlayers();
+  // Показываем всех, у кого есть счёт (включая уволенных), плюс активных игроков
+  const names = new Set();
+  state.members.forEach(m => { if (m.role === 'Игрок') names.add(m.name); });
+  Object.keys(state.accounts).forEach(n => names.add(n));
+
   const container = $('bank-players');
-  if (!players.length) {
+  if (!names.size) {
     container.innerHTML = '<div class="empty">Нет игроков в составе</div>';
     return;
   }
 
-  const totalAccounts = getTotalAccounts();
+  const positiveTotal = getPositiveTotal();
+
+  // Сортируем: сначала активные, потом уволенные
+  const arr = Array.from(names).map(name => {
+    const member = state.members.find(m => m.name === name);
+    return { name, fired: member ? member.fired : true, member };
+  });
+  arr.sort((a, b) => {
+    if (a.fired !== b.fired) return a.fired ? 1 : -1;
+    return a.name.localeCompare(b.name);
+  });
+
   container.innerHTML = '';
-  players.forEach(p => {
-    const acc = state.accounts[p.name] || { personalIn: 0, personalOut: 0, commonShare: 0, commonExpenseShare: 0 };
-    const balance = getAccountBalance(p.name);
-    const share = totalAccounts > 0 ? (balance / totalAccounts * 100) : 0;
+  arr.forEach(({ name, fired }) => {
+    const acc = state.accounts[name] || { personalIn: 0, personalOut: 0, commonShare: 0, commonExpenseShare: 0 };
+    const balance = getAccountBalance(name);
+    // Доля: если счёт отрицательный — 0%. Иначе от суммы положительных
+    const share = (balance > 0 && positiveTotal > 0) ? (balance / positiveTotal * 100) : 0;
     const limit = Math.max(0, Math.min(balance, total));
 
     const div = document.createElement('div');
-    div.className = 'bank-player';
+    div.className = 'bank-player' + (fired ? ' fired' : '');
+    const statsClass = balance < 0 ? 'bp-stats negative' : 'bp-stats';
+    const controls = fired
+      ? ''
+      : `<div class="bp-controls">
+           <input type="number" min="0" step="1" placeholder="Сумма" data-amount="${escapeAttr(name)}">
+           <button class="small" data-deposit="${escapeAttr(name)}">Вложить</button>
+           <button class="small secondary" data-withdraw="${escapeAttr(name)}">Снять</button>
+         </div>`;
     div.innerHTML = `
       <div class="bp-head">
-        <span class="bp-name">${escapeHtml(p.name)}</span>
+        <span class="bp-name">${escapeHtml(name)}${fired ? ' (уволен)' : ''}</span>
       </div>
-      <div class="bp-stats">
-        <span>Счёт: <b class="${balance < 0 ? 'neg' : ''}">${formatMoney(balance)}</b></span>
+      <div class="${statsClass}">
+        <span>Счёт: <b>${formatMoney(balance)}</b></span>
         <span>Доля: <b>${share.toFixed(1)}%</b></span>
         <span>Лимит: <b>${formatMoney(limit)}</b></span>
       </div>
-      <div class="bp-controls">
-        <input type="number" min="0" step="1" placeholder="Сумма" data-amount="${escapeAttr(p.name)}">
-        <button class="small" data-deposit="${escapeAttr(p.name)}">Вложить</button>
-        <button class="small secondary" data-withdraw="${escapeAttr(p.name)}">Снять</button>
-      </div>
+      ${controls}
     `;
     container.appendChild(div);
   });
@@ -741,18 +784,11 @@ function withdraw(name, amount) {
   const bank = getBankTotal();
   const limit = Math.max(0, Math.min(balance, bank));
 
+  if (amount > bank) { showError('bank-error', 'В банке недостаточно средств'); return; }
+
   if (amount > limit) {
-    if (amount > bank) {
-      showError('bank-error', 'В банке недостаточно средств');
-      return;
-    }
     const ok = confirm(`Сумма превышает лимит (${formatMoney(limit)}). Согласовано с игроками?`);
     if (!ok) return;
-  }
-
-  if (amount > bank) {
-    showError('bank-error', 'В банке недостаточно средств');
-    return;
   }
 
   acc.personalOut += amount;
@@ -760,7 +796,6 @@ function withdraw(name, amount) {
   renderBank();
 }
 
-// Общий доход: делится поровну между всеми Игроками
 function commonIncome(amount) {
   showError('bank-error', '');
   const players = getPlayers();
@@ -778,7 +813,6 @@ function commonIncome(amount) {
   renderBank();
 }
 
-// Общая трата: делится поровну между всеми Игроками
 function commonExpense(amount) {
   showError('bank-error', '');
   const players = getPlayers();
@@ -803,18 +837,12 @@ function commonExpense(amount) {
    ============================================================ */
 
 const $ = id => document.getElementById(id);
-
 function showError(id, msg) { $(id).textContent = msg || ''; }
-
 function escapeHtml(s) {
   return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
-function escapeAttr(s) {
-  return String(s).replace(/"/g, '&quot;');
-}
-function cssEscape(s) {
-  return String(s).replace(/["\\]/g, '\\$&');
-}
+function escapeAttr(s) { return String(s).replace(/"/g, '&quot;'); }
+function cssEscape(s) { return String(s).replace(/["\\]/g, '\\$&'); }
 
 /* ============================================================
    МОДАЛЬНЫЕ ОКНА
@@ -826,15 +854,10 @@ function openModal(name) {
   el.style.display = 'flex';
   if (name === 'members') renderMembers();
   if (name === 'bank') renderBank();
-  if (name === 'date') {
-    fillDateInputs();
-    updateDateDisplay();
-  }
+  if (name === 'date') { fillDateInputs(); updateDateDisplay(); }
 }
 
-function closeModal(el) {
-  el.style.display = 'none';
-}
+function closeModal(el) { el.style.display = 'none'; }
 
 document.querySelectorAll('.main-menu button').forEach(btn => {
   btn.addEventListener('click', () => openModal(btn.dataset.modal));
@@ -873,7 +896,6 @@ function fillDateInputs() {
   $('set-time').value = t;
 }
 
-// Заполнение выпадающих списков
 (function initDateSelects() {
   const monthSel = $('set-month');
   MONTHS.forEach((m, i) => {
@@ -896,23 +918,17 @@ function fillDateInputs() {
 
 $('btn-short-rest').addEventListener('click', () => {
   state.date = addMinutes(state.date, 60);
-  saveState();
-  updateDateDisplay();
-  fillDateInputs();
+  saveState(); updateDateDisplay(); fillDateInputs();
 });
 
 $('btn-long-rest').addEventListener('click', () => {
   state.date = addMinutes(state.date, 8 * 60);
-  saveState();
-  updateDateDisplay();
-  fillDateInputs();
+  saveState(); updateDateDisplay(); fillDateInputs();
 });
 
 $('btn-next-day').addEventListener('click', () => {
   state.date = nextDayMorning(state.date);
-  saveState();
-  updateDateDisplay();
-  fillDateInputs();
+  saveState(); updateDateDisplay(); fillDateInputs();
 });
 
 $('btn-set-date').addEventListener('click', () => {
@@ -931,13 +947,11 @@ $('btn-set-date').addEventListener('click', () => {
     return;
   }
   state.date = { year, month, day, hours: hh, minutes: mm };
-  saveState();
-  updateDateDisplay();
-  fillDateInputs();
+  saveState(); updateDateDisplay(); fillDateInputs();
 });
 
 /* ============================================================
-   БАНК — обработчики кнопок "Общий доход" / "Общая трата"
+   БАНК — обработчики общих операций
    ============================================================ */
 
 $('btn-common-income').addEventListener('click', () => {
