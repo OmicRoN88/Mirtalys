@@ -627,7 +627,6 @@ function escapeHtml(s) {
 function escapeAttr(s) { return String(s).replace(/"/g, '&quot;'); }
 function cssEscape(s) { return String(s).replace(/["\\]/g, '\\$&'); }
 
-// Гарантированно получить счёт игрока (создать, если нет)
 function ensureAccount(name) {
   if (!state.accounts[name]) {
     state.accounts[name] = { personalIn: 0, personalOut: 0, commonShare: 0, commonExpenseShare: 0 };
@@ -842,7 +841,6 @@ async function deleteMember(id) {
   const ok = await showConfirm(`Удалить «${m.name}» навсегда? Это действие необратимо.`, 'Удалить', 'Отмена');
   if (!ok) return;
 
-  // Удаляем из состава. Счёт НЕ трогаем — он останется в банке (если был).
   state.members = state.members.filter(x => x.id !== id);
   saveState();
   renderMembers();
@@ -883,7 +881,6 @@ function renderBank() {
     `Общих доходов: <span>${formatMoney(state.totals.commonIncome)}</span> · ` +
     `Общих трат: <span>${formatMoney(state.totals.commonExpense)}</span>`;
 
-  // Показываем: всех игроков из состава (включая уволенных) + всех, у кого есть счёт
   const names = new Set();
   state.members.forEach(m => { if (m.role === 'Игрок') names.add(m.name); });
   Object.keys(state.accounts).forEach(n => names.add(n));
@@ -898,7 +895,6 @@ function renderBank() {
 
   const arr = Array.from(names).map(name => {
     const member = state.members.find(m => m.name === name);
-    // Если member нет — значит, удалён навсегда (или счёт остался от удалённого)
     const fired = member ? member.fired : true;
     return { name, fired, member };
   });
@@ -921,15 +917,17 @@ function renderBank() {
     const div = document.createElement('div');
     div.className = 'bank-player' + (fired ? ' fired' : '');
     const statsClass = 'bp-stats ' + balanceClass;
-    // Управлять деньгами можно, только если игрок активен (есть в составе и не уволен)
-    const canControl = !fired;
-    const controls = canControl
+
+    const controls = !fired
       ? `<div class="bp-controls">
            <input type="number" min="0" step="1" placeholder="Сумма" data-amount="${escapeAttr(name)}">
            <button class="small" data-deposit="${escapeAttr(name)}">Вложить</button>
            <button class="small secondary" data-withdraw="${escapeAttr(name)}">Снять</button>
          </div>`
-      : '';
+      : `<div class="bp-controls">
+           <button class="danger small" data-remove-account="${escapeAttr(name)}">Убрать</button>
+         </div>`;
+
     div.innerHTML = `
       <div class="bp-head">
         <span class="bp-name">${escapeHtml(name)}${fired ? ' (не в составе)' : ''}</span>
@@ -964,11 +962,20 @@ function renderBank() {
       input.value = '';
     });
   });
+  container.querySelectorAll('[data-remove-account]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const name = btn.dataset.removeAccount;
+      delete state.accounts[name];
+      saveState();
+      renderBank();
+      showError('bank-error', '');
+    });
+  });
 }
 
 function deposit(name, amount) {
   showError('bank-error', '');
-  const acc = ensureAccount(name);   // ← создаём счёт, если его нет
+  const acc = ensureAccount(name);
   acc.personalIn += amount;
   logHistory(`Игрок ${name} сделал личный вклад ${formatMoney(amount)}`);
   saveState();
@@ -977,7 +984,7 @@ function deposit(name, amount) {
 
 async function withdraw(name, amount) {
   showError('bank-error', '');
-  const acc = ensureAccount(name);   // ← создаём счёт, если его нет
+  const acc = ensureAccount(name);
   const balance = getAccountBalance(name);
   const bank = getBankTotal();
   const limit = Math.max(0, Math.min(balance, bank));
@@ -1030,13 +1037,12 @@ function commonExpense(amount) {
 }
 
 async function resetBank() {
-  const ok = await showConfirm('Сбросить банк? Все счета, долги, общие суммы и история операций обнулятся. Состав гильдии останется.');
+  const ok = await showConfirm('Сбросить банк полностью? Все счета (включая удалённых вкладчиков), долги, общие суммы и история операций будут стёрты. Состав гильдии останется.');
   if (!ok) return;
-  for (const name in state.accounts) {
-    state.accounts[name] = { personalIn: 0, personalOut: 0, commonShare: 0, commonExpenseShare: 0 };
-  }
+  state.accounts = {};
+  getPlayers().forEach(p => ensureAccount(p.name));
   state.totals = { commonIncome: 0, commonExpense: 0 };
-  state.history = [];   // ← очищаем историю
+  state.history = [];
   saveState();
   renderBank();
   showError('bank-error', '');
