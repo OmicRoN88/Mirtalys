@@ -341,6 +341,56 @@
   }
   .expense-total-row b { color: var(--gold); }
 
+  /* ---------- СКЛАД ---------- */
+  .wh-filter {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    margin-bottom: 12px;
+    flex-wrap: wrap;
+  }
+  .wh-filter label {
+    font-size: 0.8rem;
+    color: var(--text-dim);
+  }
+  .wh-filter select { width: auto; min-width: 160px; }
+
+  .wh-category-title {
+    font-size: 0.85rem;
+    color: var(--accent);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin: 16px 0 8px;
+    padding-bottom: 4px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .wh-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: var(--panel-2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 10px 14px;
+    margin-bottom: 8px;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+  .wh-item .wh-name { font-weight: 600; }
+  .wh-item .wh-qty {
+    color: var(--gold);
+    font-weight: 600;
+    margin-left: 8px;
+  }
+  .wh-item .wh-controls {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+  .wh-item .wh-controls input { width: 80px; }
+
   .dialog-overlay {
     position: fixed;
     inset: 0;
@@ -381,7 +431,7 @@
   <button data-modal="members">Состав</button>
   <button data-modal="date">Дата</button>
   <button data-modal="bank">Банк</button>
-  <button data-modal="inventory">Инвентарь</button>
+  <button data-modal="warehouse">Склад</button>
   <button data-modal="business">Бизнес</button>
 </div>
 
@@ -514,12 +564,47 @@
   </div>
 </div>
 
-<!-- ИНВЕНТАРЬ -->
-<div class="modal-overlay" id="modal-inventory" style="display:none;">
+<!-- СКЛАД -->
+<div class="modal-overlay" id="modal-warehouse" style="display:none;">
   <div class="modal">
     <button class="modal-close" data-close>×</button>
-    <h2>Инвентарь</h2>
-    <div class="empty">Раздел в разработке 🛠️</div>
+    <h2>Склад гильдии</h2>
+
+    <div class="section-title">Добавить предмет</div>
+    <div class="row">
+      <div class="field" style="grid-column: span 2;">
+        <label for="wh-name">Название</label>
+        <input type="text" id="wh-name" placeholder="Стальные слитки">
+      </div>
+      <div class="field">
+        <label for="wh-qty">Количество</label>
+        <input type="number" id="wh-qty" min="0" step="0.1">
+      </div>
+      <div class="field">
+        <label for="wh-unit">Единица</label>
+        <select id="wh-unit">
+          <option value="шт.">шт.</option>
+          <option value="кг">кг</option>
+          <option value="л">л</option>
+          <option value="м">м</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="wh-category">Категория</label>
+        <select id="wh-category"></select>
+      </div>
+    </div>
+    <button id="btn-add-item">Добавить</button>
+    <div class="error" id="wh-error"></div>
+
+    <div class="section-title">Содержимое склада</div>
+    <div class="wh-filter">
+      <label for="wh-filter">Фильтр:</label>
+      <select id="wh-filter">
+        <option value="all">Все категории</option>
+      </select>
+    </div>
+    <div id="wh-list"></div>
   </div>
 </div>
 
@@ -547,17 +632,21 @@ const WEEKDAYS = ['Воскресенье','Понедельник','Вторн�
                   'Четверг','Пятница','Суббота'];
 const DAYS_IN_MONTH = [31,28,31,30,31,30,31,31,30,31,30,31];
 
+const WAREHOUSE_CATEGORIES = ['Оружие', 'Броня', 'Снаряжение', 'Инструменты',
+                              'Ресурсы', 'Пища', 'Расходники', 'Маг. предмет'];
+const WAREHOUSE_UNITS = ['шт.', 'кг', 'л', 'м'];
+
 function defaultState() {
   return {
     date: { year: 1852, month: 11, day: 27, hours: 12, minutes: 30 },
     members: [],
     accounts: {},
-    orphanFunds: 0,
     totals: { commonIncome: 0, commonExpense: 0 },
     history: [],
     expenses: [],
     expensesLastPaidMonth: null,
-    expensesLastPaidAmount: 0
+    expensesLastPaidAmount: 0,
+    warehouse: []
   };
 }
 
@@ -570,12 +659,12 @@ function loadState() {
     const s = JSON.parse(raw);
     if (!s.date || !Array.isArray(s.members)) return defaultState();
     if (!s.accounts) s.accounts = {};
-    if (typeof s.orphanFunds !== 'number') s.orphanFunds = 0;
     if (!s.totals) s.totals = { commonIncome: 0, commonExpense: 0 };
     if (!Array.isArray(s.history)) s.history = [];
     if (!Array.isArray(s.expenses)) s.expenses = [];
     if (!s.expensesLastPaidMonth) s.expensesLastPaidMonth = null;
     if (typeof s.expensesLastPaidAmount !== 'number') s.expensesLastPaidAmount = 0;
+    if (!Array.isArray(s.warehouse)) s.warehouse = [];
     s.members.forEach(m => { if (typeof m.fired !== 'boolean') m.fired = false; });
     return s;
   } catch {
@@ -592,12 +681,19 @@ function saveState() {
    ============================================================ */
 
 function floorTenths(x) { return Math.floor(x * 10) / 10; }
+function ceilTenths(x) { return Math.ceil(x * 10) / 10; }
 function roundTenths(x) { return Math.round(x * 10) / 10; }
 
 function formatMoney(n) {
   const r = roundTenths(n);
   if (Number.isInteger(r)) return r + ' ЗМ';
   return r.toFixed(1) + ' ЗМ';
+}
+
+function formatQty(n) {
+  const r = roundTenths(n);
+  if (Number.isInteger(r)) return r.toString();
+  return r.toFixed(1);
 }
 
 /* ============================================================
@@ -904,7 +1000,7 @@ function getTotalAccounts() {
 }
 
 function getBankTotal() {
-  return getTotalAccounts() + (state.orphanFunds || 0);
+  return getTotalAccounts();
 }
 
 function getPositiveTotal() {
@@ -919,11 +1015,9 @@ function getPositiveTotal() {
 function renderBank() {
   const total = getBankTotal();
   $('bank-total').textContent = formatMoney(total);
-  const orphan = state.orphanFunds || 0;
   $('bank-sub').innerHTML =
     `Общих доходов: <span>${formatMoney(state.totals.commonIncome)}</span> · ` +
-    `Общих трат: <span>${formatMoney(state.totals.commonExpense)}</span>` +
-    (orphan !== 0 ? ` · Средства без вкладчика: <span>${formatMoney(orphan)}</span>` : '');
+    `Общих трат: <span>${formatMoney(state.totals.commonExpense)}</span>`;
 
   renderExpenseInfo();
 
@@ -1011,11 +1105,7 @@ function renderBank() {
   container.querySelectorAll('[data-remove-account]').forEach(btn => {
     btn.addEventListener('click', () => {
       const name = btn.dataset.removeAccount;
-      const balance = getAccountBalance(name);
-      if (balance !== 0) {
-        state.orphanFunds = (state.orphanFunds || 0) + balance;
-        logHistory(`Вклад игрока ${name} (${formatMoney(balance)}) перешёл в средства без вкладчика`);
-      }
+      // Деньги просто исчезают (сгорают)
       delete state.accounts[name];
       saveState();
       renderBank();
@@ -1060,17 +1150,10 @@ function commonIncome(amount) {
   if (amount <= 0) { showError('bank-error', 'Сумма должна быть > 0'); return; }
 
   const per = floorTenths(amount / players.length);
-  const distributed = roundTenths(per * players.length);
-  const remainder = roundTenths(amount - distributed);
-
   players.forEach(p => {
     ensureAccount(p.name).commonShare += per;
   });
-  // Остаток уходит в «средства без вкладчика» (комиссия)
-  if (remainder > 0.001) {
-    state.orphanFunds = roundTenths((state.orphanFunds || 0) + remainder);
-  }
-  // В статистику пишем полную введённую сумму
+  // Остаток сгорает — никуда не добавляем
   state.totals.commonIncome = roundTenths(state.totals.commonIncome + amount);
   logHistory(`Гильдия пополнила счёт на ${formatMoney(amount)}`);
   saveState();
@@ -1085,17 +1168,11 @@ function commonExpense(amount) {
   const bank = getBankTotal();
   if (amount > bank) { showError('bank-error', 'В банке недостаточно средств'); return; }
 
-  const per = floorTenths(amount / players.length);
-  const distributed = roundTenths(per * players.length);
-  const remainder = roundTenths(amount - distributed);
-
+  // Округление ВВЕРХ — вкладчики платят чуть больше, остаток сгорает у них
+  const per = ceilTenths(amount / players.length);
   players.forEach(p => {
     ensureAccount(p.name).commonExpenseShare += per;
   });
-  // Остаток списываем из «средств без вкладчика» (может уйти в минус)
-  if (remainder > 0.001) {
-    state.orphanFunds = roundTenths((state.orphanFunds || 0) - remainder);
-  }
   state.totals.commonExpense = roundTenths(state.totals.commonExpense + amount);
   logHistory(`Гильдия потратила со счёта ${formatMoney(amount)}`);
   saveState();
@@ -1106,7 +1183,6 @@ async function resetBank() {
   const ok = await showConfirm('Сбросить банк полностью? Все счета (включая удалённых вкладчиков), долги, общие суммы и история операций будут стёрты. Состав гильдии останется.');
   if (!ok) return;
   state.accounts = {};
-  state.orphanFunds = 0;
   getPlayers().forEach(p => ensureAccount(p.name));
   state.totals = { commonIncome: 0, commonExpense: 0 };
   state.history = [];
@@ -1238,29 +1314,14 @@ async function payExpenses() {
   const bank = getBankTotal();
   if (amountToPay > bank) { showError('pay-error', 'В банке недостаточно средств'); return; }
 
-  let remaining = amountToPay;
-  if (state.orphanFunds > 0) {
-    const take = Math.min(state.orphanFunds, remaining);
-    state.orphanFunds = roundTenths(state.orphanFunds - take);
-    remaining = roundTenths(remaining - take);
-  }
-  if (remaining > 0) {
-    const players = getPlayers();
-    if (!players.length) { showError('pay-error', 'Нет игроков для распределения траты'); return; }
-    const per = floorTenths(remaining / players.length);
-    const distributed = roundTenths(per * players.length);
-    const rem2 = roundTenths(remaining - distributed);
-    players.forEach(p => {
-      ensureAccount(p.name).commonExpenseShare += per;
-    });
-    // Остаток от деления тоже уходит в orphanFunds (может уйти в минус)
-    if (rem2 > 0.001) {
-      state.orphanFunds = roundTenths((state.orphanFunds || 0) - rem2);
-    }
-    state.totals.commonExpense = roundTenths(state.totals.commonExpense + remaining);
-  } else {
-    state.totals.commonExpense = roundTenths(state.totals.commonExpense + amountToPay);
-  }
+  const players = getPlayers();
+  if (!players.length) { showError('pay-error', 'Нет игроков для распределения траты'); return; }
+  // Округление ВВЕРХ — вкладчики платят чуть больше
+  const per = ceilTenths(amountToPay / players.length);
+  players.forEach(p => {
+    ensureAccount(p.name).commonExpenseShare += per;
+  });
+  state.totals.commonExpense = roundTenths(state.totals.commonExpense + amountToPay);
 
   if (unpaid === 0) {
     state.expensesLastPaidAmount = total;
@@ -1279,6 +1340,154 @@ async function payExpenses() {
 $('btn-pay-expenses').addEventListener('click', payExpenses);
 
 /* ============================================================
+   СКЛАД
+   ============================================================ */
+
+function renderWarehouse() {
+  const filter = $('wh-filter').value;
+  const list = $('wh-list');
+
+  let items = state.warehouse.slice();
+  if (filter !== 'all') {
+    items = items.filter(i => i.category === filter);
+  }
+
+  if (!items.length) {
+    list.innerHTML = '<div class="empty">Склад пуст</div>';
+    return;
+  }
+
+  // Группировка по категориям
+  const byCategory = {};
+  items.forEach(i => {
+    if (!byCategory[i.category]) byCategory[i.category] = [];
+    byCategory[i.category].push(i);
+  });
+
+  let html = '';
+  WAREHOUSE_CATEGORIES.forEach(cat => {
+    if (!byCategory[cat]) return;
+    html += `<div class="wh-category-title">${escapeHtml(cat)}</div>`;
+    byCategory[cat].sort((a, b) => a.name.localeCompare(b.name));
+    byCategory[cat].forEach(item => {
+      const id = item.id;
+      html += `
+        <div class="wh-item">
+          <div>
+            <span class="wh-name">${escapeHtml(item.name)}</span>
+            <span class="wh-qty">${formatQty(item.quantity)} ${escapeHtml(item.unit)}</span>
+          </div>
+          <div class="wh-controls">
+            <input type="number" min="0" step="0.1" placeholder="Кол-во" data-wh-amount="${id}">
+            <button class="success-btn small" data-wh-add="${id}">+</button>
+            <button class="danger small" data-wh-remove="${id}">−</button>
+            <button class="secondary small" data-wh-delete="${id}">🗑</button>
+          </div>
+        </div>
+      `;
+    });
+  });
+
+  list.innerHTML = html;
+
+  // Обработчики
+  list.querySelectorAll('[data-wh-add]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const id = btn.dataset.whAdd;
+      const input = list.querySelector(`[data-wh-amount="${cssEscape(id)}"]`);
+      const val = parseFloat(input.value);
+      if (isNaN(val) || val <= 0) { showError('wh-error', 'Введите количество больше 0'); return; }
+      addToWarehouse(id, val);
+      input.value = '';
+    });
+  });
+  list.querySelectorAll('[data-wh-remove]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const id = btn.dataset.whRemove;
+      const input = list.querySelector(`[data-wh-amount="${cssEscape(id)}"]`);
+      const val = parseFloat(input.value);
+      if (isNaN(val) || val <= 0) { showError('wh-error', 'Введите количество больше 0'); return; }
+      removeFromWarehouse(id, val);
+      input.value = '';
+    });
+  });
+  list.querySelectorAll('[data-wh-delete]').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const id = btn.dataset.whDelete;
+      const item = state.warehouse.find(i => i.id === id);
+      if (!item) return;
+      const ok = await showConfirm(`Удалить «${item.name}» со склада полностью?`, 'Удалить', 'Отмена');
+      if (!ok) return;
+      state.warehouse = state.warehouse.filter(i => i.id !== id);
+      saveState();
+      renderWarehouse();
+      showError('wh-error', '');
+    });
+  });
+}
+
+function addToWarehouse(id, amount) {
+  const item = state.warehouse.find(i => i.id === id);
+  if (!item) return;
+  item.quantity = roundTenths(item.quantity + amount);
+  saveState();
+  renderWarehouse();
+  showError('wh-error', '');
+}
+
+async function removeFromWarehouse(id, amount) {
+  const item = state.warehouse.find(i => i.id === id);
+  if (!item) return;
+  const ok = await showConfirm(`Уверены, что хотите взять «${item.name}»?`);
+  if (!ok) return;
+  if (amount > item.quantity) {
+    showError('wh-error', 'На складе недостаточно этого предмета');
+    return;
+  }
+  item.quantity = roundTenths(item.quantity - amount);
+  if (item.quantity <= 0.001) {
+    state.warehouse = state.warehouse.filter(i => i.id !== id);
+  }
+  saveState();
+  renderWarehouse();
+  showError('wh-error', '');
+}
+
+$('btn-add-item').addEventListener('click', () => {
+  showError('wh-error', '');
+  const name = $('wh-name').value.trim();
+  const qty = parseFloat($('wh-qty').value);
+  const unit = $('wh-unit').value;
+  const category = $('wh-category').value;
+
+  if (!name) { showError('wh-error', 'Введите название'); return; }
+  if (isNaN(qty) || qty <= 0) { showError('wh-error', 'Количество должно быть > 0'); return; }
+
+  // Проверка: для шт. и м — только целые
+  if ((unit === 'шт.' || unit === 'м') && !Number.isInteger(qty)) {
+    showError('wh-error', 'Для этой единицы измерения количество должно быть целым');
+    return;
+  }
+
+  // Если предмет с таким названием и единицей уже есть — суммируем
+  const existing = state.warehouse.find(i =>
+    i.name.toLowerCase() === name.toLowerCase() && i.unit === unit
+  );
+  if (existing) {
+    existing.quantity = roundTenths(existing.quantity + qty);
+  } else {
+    state.warehouse.push({
+      id: Date.now() + '_' + Math.random().toString(36).slice(2, 7),
+      name, quantity: qty, unit, category
+    });
+  }
+  saveState();
+  $('wh-name').value = '';
+  $('wh-qty').value = '';
+  renderWarehouse();
+});
+
+/* ============================================================
    МОДАЛЬНЫЕ ОКНА
    ============================================================ */
 
@@ -1291,6 +1500,7 @@ function openModal(name) {
   if (name === 'date') { fillDateInputs(); updateDateDisplay(); }
   if (name === 'history') renderHistory();
   if (name === 'expenses') { renderExpenses(); showError('pay-error', ''); }
+  if (name === 'warehouse') { renderWarehouse(); showError('wh-error', ''); }
 }
 
 function closeModal(el) { el.style.display = 'none'; }
@@ -1409,6 +1619,30 @@ $('btn-common-expense').addEventListener('click', async () => {
 $('btn-history').addEventListener('click', () => openModal('history'));
 $('btn-expenses').addEventListener('click', () => openModal('expenses'));
 $('btn-reset-bank').addEventListener('click', resetBank);
+
+/* ============================================================
+   СКЛАД — инициализация выпадающих списков
+   ============================================================ */
+
+(function initWarehouseSelects() {
+  const catSel = $('wh-category');
+  WAREHOUSE_CATEGORIES.forEach(c => {
+    const opt = document.createElement('option');
+    opt.value = c;
+    opt.textContent = c;
+    catSel.appendChild(opt);
+  });
+
+  const filterSel = $('wh-filter');
+  WAREHOUSE_CATEGORIES.forEach(c => {
+    const opt = document.createElement('option');
+    opt.value = c;
+    opt.textContent = c;
+    filterSel.appendChild(opt);
+  });
+})();
+
+$('wh-filter').addEventListener('change', renderWarehouse);
 
 /* ============================================================
    ИНИЦИАЛИЗАЦИЯ
