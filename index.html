@@ -276,12 +276,12 @@
   }
   .bank-player .bp-stats span b { color: var(--text); font-weight: 600; }
 
-  /* Красная строка статистики при отрицательном счёте */
-  .bank-player .bp-stats.negative,
-  .bank-player .bp-stats.negative span,
-  .bank-player .bp-stats.negative span b {
-    color: var(--error) !important;
-  }
+  /* Цвета счёта */
+  .bp-stats .balance-positive b { color: var(--success); }
+  .bp-stats .balance-zero b { color: var(--text); }
+  .bp-stats .balance-negative,
+  .bp-stats .balance-negative span,
+  .bp-stats .balance-negative b { color: var(--error) !important; }
 
   .bank-player .bp-controls {
     display: flex;
@@ -404,6 +404,7 @@
     <div class="bank-actions">
       <button id="btn-common-income" class="secondary">Общий доход</button>
       <button id="btn-common-expense" class="secondary">Общая трата</button>
+      <button id="btn-reset-bank" class="danger">Сбросить банк</button>
     </div>
     <div class="section-title">Вкладчики</div>
     <div id="bank-players"></div>
@@ -446,8 +447,8 @@ const DAYS_IN_MONTH = [31,28,31,30,31,30,31,31,30,31,30,31];
 function defaultState() {
   return {
     date: { year: 1852, month: 11, day: 27, hours: 12, minutes: 30 },
-    members: [],   // { id, name, role, fired }
-    accounts: {},  // { name: { personalIn, personalOut, commonShare, commonExpenseShare } }
+    members: [],
+    accounts: {},
     totals: { commonIncome: 0, commonExpense: 0 }
   };
 }
@@ -462,7 +463,6 @@ function loadState() {
     if (!s.date || !Array.isArray(s.members)) return defaultState();
     if (!s.accounts) s.accounts = {};
     if (!s.totals) s.totals = { commonIncome: 0, commonExpense: 0 };
-    // миграция: добавим fired, если нет
     s.members.forEach(m => { if (typeof m.fired !== 'boolean') m.fired = false; });
     return s;
   } catch {
@@ -472,6 +472,27 @@ function loadState() {
 
 function saveState() {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+}
+
+/* ============================================================
+   ОКРУГЛЕНИЕ ДО ДЕСЯТЫХ
+   ============================================================ */
+
+// Округление до десятых (вниз, остаток сжигается)
+function floorTenths(x) {
+  return Math.floor(x * 10) / 10;
+}
+
+// Округление до десятых (обычное, для отображения)
+function roundTenths(x) {
+  return Math.round(x * 10) / 10;
+}
+
+// Форматирование денег: до десятых, без .0
+function formatMoney(n) {
+  const r = roundTenths(n);
+  if (Number.isInteger(r)) return r + ' ЗМ';
+  return r.toFixed(1) + ' ЗМ';
 }
 
 /* ============================================================
@@ -552,7 +573,6 @@ function renderMembers() {
     list.innerHTML = '<div class="empty">Пока никого нет</div>';
     return;
   }
-  // Сортировка: сначала активные (по роли), затем уволенные (по роли)
   const sorted = [...state.members].sort((a, b) => {
     if (a.fired !== b.fired) return a.fired ? 1 : -1;
     return ROLE_ORDER.indexOf(a.role) - ROLE_ORDER.indexOf(b.role);
@@ -584,11 +604,9 @@ function renderMembers() {
 function addMember(name, role) {
   name = name.trim();
   if (!name) { showError('members-error', 'Введите имя'); return; }
-  // Проверка: есть ли уже такое имя (включая уволенных)
   const existing = state.members.find(m => m.name.toLowerCase() === name.toLowerCase());
   if (existing) {
     if (existing.fired) {
-      // Возвращаем уволенного
       existing.fired = false;
       existing.role = role;
       saveState();
@@ -619,18 +637,15 @@ function fireMember(id) {
   const account = state.accounts[m.name];
   const balance = account ? getAccountBalance(m.name) : 0;
 
-  // Шаг 1: подтверждение увольнения
   if (!confirm(`Уволить сотрудника «${m.name}»?`)) return;
 
-  // Шаг 2: если есть вклад — спросить, выдать ли деньги
   if (m.role === 'Игрок' && balance !== 0) {
     const give = confirm(`У сотрудника вклад в банке: ${formatMoney(balance)}. Выдать?`);
     if (give && account) {
-      account.personalIn -= balance; // обнуляем счёт
+      account.personalIn -= balance;
     }
   }
 
-  // Шаг 3: помечаем уволенным (не удаляем!)
   m.fired = true;
   saveState();
   renderMembers();
@@ -656,17 +671,14 @@ function getAccountBalance(name) {
   return a.personalIn - a.personalOut + a.commonShare - a.commonExpenseShare;
 }
 
-// Сумма счетов всех (включая уволенных)
 function getTotalAccounts() {
   let sum = 0;
   for (const name in state.accounts) sum += getAccountBalance(name);
   return sum;
 }
 
-// Банк = сумма счетов всех (включая уволенных)
 function getBankTotal() { return getTotalAccounts(); }
 
-// Сумма ПОЛОЖИТЕЛЬНЫХ счетов (для расчёта долей, чтобы отрицательные не тянули вниз)
 function getPositiveTotal() {
   let sum = 0;
   for (const name in state.accounts) {
@@ -676,12 +688,6 @@ function getPositiveTotal() {
   return sum;
 }
 
-function formatMoney(n) {
-  const rounded = Math.round(n * 100) / 100;
-  if (Number.isInteger(rounded)) return rounded + ' ЗМ';
-  return rounded.toFixed(2) + ' ЗМ';
-}
-
 function renderBank() {
   const total = getBankTotal();
   $('bank-total').textContent = formatMoney(total);
@@ -689,7 +695,6 @@ function renderBank() {
     `Общих доходов: <span>${formatMoney(state.totals.commonIncome)}</span> · ` +
     `Общих трат: <span>${formatMoney(state.totals.commonExpense)}</span>`;
 
-  // Показываем всех, у кого есть счёт (включая уволенных), плюс активных игроков
   const names = new Set();
   state.members.forEach(m => { if (m.role === 'Игрок') names.add(m.name); });
   Object.keys(state.accounts).forEach(n => names.add(n));
@@ -702,7 +707,6 @@ function renderBank() {
 
   const positiveTotal = getPositiveTotal();
 
-  // Сортируем: сначала активные, потом уволенные
   const arr = Array.from(names).map(name => {
     const member = state.members.find(m => m.name === name);
     return { name, fired: member ? member.fired : true, member };
@@ -714,15 +718,19 @@ function renderBank() {
 
   container.innerHTML = '';
   arr.forEach(({ name, fired }) => {
-    const acc = state.accounts[name] || { personalIn: 0, personalOut: 0, commonShare: 0, commonExpenseShare: 0 };
     const balance = getAccountBalance(name);
-    // Доля: если счёт отрицательный — 0%. Иначе от суммы положительных
     const share = (balance > 0 && positiveTotal > 0) ? (balance / positiveTotal * 100) : 0;
     const limit = Math.max(0, Math.min(balance, total));
 
+    // Класс и текст для счёта
+    let balanceClass, balanceLabel;
+    if (balance > 0) { balanceClass = 'balance-positive'; balanceLabel = 'Счёт'; }
+    else if (balance < 0) { balanceClass = 'balance-negative'; balanceLabel = 'Долг'; }
+    else { balanceClass = 'balance-zero'; balanceLabel = 'Счёт'; }
+
     const div = document.createElement('div');
     div.className = 'bank-player' + (fired ? ' fired' : '');
-    const statsClass = balance < 0 ? 'bp-stats negative' : 'bp-stats';
+    const statsClass = 'bp-stats ' + balanceClass;
     const controls = fired
       ? ''
       : `<div class="bp-controls">
@@ -735,7 +743,7 @@ function renderBank() {
         <span class="bp-name">${escapeHtml(name)}${fired ? ' (уволен)' : ''}</span>
       </div>
       <div class="${statsClass}">
-        <span>Счёт: <b>${formatMoney(balance)}</b></span>
+        <span>${balanceLabel}: <b>${formatMoney(balance)}</b></span>
         <span>Доля: <b>${share.toFixed(1)}%</b></span>
         <span>Лимит: <b>${formatMoney(limit)}</b></span>
       </div>
@@ -744,7 +752,6 @@ function renderBank() {
     container.appendChild(div);
   });
 
-  // Обработчики
   container.querySelectorAll('[data-deposit]').forEach(btn => {
     btn.addEventListener('click', () => {
       const name = btn.dataset.deposit;
@@ -796,23 +803,25 @@ function withdraw(name, amount) {
   renderBank();
 }
 
+// Общий доход: делится поровну, с округлением вниз до десятых (остаток сжигается)
 function commonIncome(amount) {
   showError('bank-error', '');
   const players = getPlayers();
   if (!players.length) { showError('bank-error', 'Нет игроков'); return; }
   if (amount <= 0) { showError('bank-error', 'Сумма должна быть > 0'); return; }
-  const per = amount / players.length;
+  const per = floorTenths(amount / players.length);
   players.forEach(p => {
     if (!state.accounts[p.name]) {
       state.accounts[p.name] = { personalIn: 0, personalOut: 0, commonShare: 0, commonExpenseShare: 0 };
     }
     state.accounts[p.name].commonShare += per;
   });
-  state.totals.commonIncome += amount;
+  state.totals.commonIncome += per * players.length; // учитываем только распределённое
   saveState();
   renderBank();
 }
 
+// Общая трата: делится поровну, с округлением вниз до десятых
 function commonExpense(amount) {
   showError('bank-error', '');
   const players = getPlayers();
@@ -820,16 +829,28 @@ function commonExpense(amount) {
   if (amount <= 0) { showError('bank-error', 'Сумма должна быть > 0'); return; }
   const bank = getBankTotal();
   if (amount > bank) { showError('bank-error', 'В банке недостаточно средств'); return; }
-  const per = amount / players.length;
+  const per = floorTenths(amount / players.length);
   players.forEach(p => {
     if (!state.accounts[p.name]) {
       state.accounts[p.name] = { personalIn: 0, personalOut: 0, commonShare: 0, commonExpenseShare: 0 };
     }
     state.accounts[p.name].commonExpenseShare += per;
   });
-  state.totals.commonExpense += amount;
+  state.totals.commonExpense += per * players.length;
   saveState();
   renderBank();
+}
+
+// Сброс банка (для тестов)
+function resetBank() {
+  if (!confirm('Сбросить банк? Все счета, долги и общие суммы обнулятся. Состав гильдии останется.')) return;
+  for (const name in state.accounts) {
+    state.accounts[name] = { personalIn: 0, personalOut: 0, commonShare: 0, commonExpenseShare: 0 };
+  }
+  state.totals = { commonIncome: 0, commonExpense: 0 };
+  saveState();
+  renderBank();
+  showError('bank-error', '');
 }
 
 /* ============================================================
@@ -951,7 +972,7 @@ $('btn-set-date').addEventListener('click', () => {
 });
 
 /* ============================================================
-   БАНК — обработчики общих операций
+   БАНК — обработчики общих операций и сброса
    ============================================================ */
 
 $('btn-common-income').addEventListener('click', () => {
@@ -965,6 +986,8 @@ $('btn-common-expense').addEventListener('click', () => {
   if (isNaN(val) || val <= 0) return;
   commonExpense(val);
 });
+
+$('btn-reset-bank').addEventListener('click', resetBank);
 
 /* ============================================================
    ИНИЦИАЛИЗАЦИЯ
