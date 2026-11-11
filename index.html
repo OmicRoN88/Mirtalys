@@ -173,8 +173,6 @@
   button.danger:hover { background: #d04050; }
   button.success-btn { background: #2f8f4e; }
   button.success-btn:hover { background: #3aa860; }
-  button.warn { background: #b06a20; }
-  button.warn:hover { background: #d08030; }
 
   .error {
     color: var(--error);
@@ -501,13 +499,10 @@
 </div>
 
 <script>
-/* ============================================================
-   ВАЖНО: объявление $ должно быть ДО всех вызовов
-   ============================================================ */
 const $ = id => document.getElementById(id);
 
 /* ============================================================
-   МИРТАЛИС — состояние и хранилище
+   СОСТОЯНИЕ
    ============================================================ */
 
 const STORAGE_KEY = 'mirtalis_state_v1';
@@ -516,7 +511,6 @@ const MONTHS = ['января','февраля','марта','апреля','м�
                 'июля','августа','сентября','октября','ноября','декабря'];
 const WEEKDAYS = ['Воскресенье','Понедельник','Вторник','Среда',
                   'Четверг','Пятница','Суббота'];
-
 const DAYS_IN_MONTH = [31,28,31,30,31,30,31,31,30,31,30,31];
 
 function defaultState() {
@@ -623,7 +617,7 @@ function updateDateDisplay() {
 }
 
 /* ============================================================
-   ВСПОМОГАТЕЛЬНОЕ (без $)
+   ВСПОМОГАТЕЛЬНОЕ
    ============================================================ */
 
 function showError(id, msg) { $(id).textContent = msg || ''; }
@@ -632,6 +626,14 @@ function escapeHtml(s) {
 }
 function escapeAttr(s) { return String(s).replace(/"/g, '&quot;'); }
 function cssEscape(s) { return String(s).replace(/["\\]/g, '\\$&'); }
+
+// Гарантированно получить счёт игрока (создать, если нет)
+function ensureAccount(name) {
+  if (!state.accounts[name]) {
+    state.accounts[name] = { personalIn: 0, personalOut: 0, commonShare: 0, commonExpenseShare: 0 };
+  }
+  return state.accounts[name];
+}
 
 /* ============================================================
    КАСТОМНЫЕ ДИАЛОГИ
@@ -793,9 +795,7 @@ function addMember(name, role) {
     return;
   }
   state.members.push({ id: Date.now() + '_' + Math.random().toString(36).slice(2, 7), name, role, fired: false });
-  if (role === 'Игрок' && !state.accounts[name]) {
-    state.accounts[name] = { personalIn: 0, personalOut: 0, commonShare: 0, commonExpenseShare: 0 };
-  }
+  if (role === 'Игрок') ensureAccount(name);
   saveState();
   showError('members-error', '');
   $('member-name').value = '';
@@ -807,16 +807,15 @@ async function fireMember(id) {
   const idx = state.members.findIndex(m => m.id === id);
   if (idx === -1) return;
   const m = state.members[idx];
-  const account = state.accounts[m.name];
-  const balance = account ? getAccountBalance(m.name) : 0;
+  const balance = state.accounts[m.name] ? getAccountBalance(m.name) : 0;
 
   const ok = await showConfirm(`Уволить сотрудника «${m.name}»?`);
   if (!ok) return;
 
   if (m.role === 'Игрок' && balance !== 0) {
     const give = await showConfirm(`У сотрудника вклад в банке: ${formatMoney(balance)}. Выдать?`);
-    if (give && account) {
-      account.personalIn -= balance;
+    if (give) {
+      ensureAccount(m.name).personalIn -= balance;
       logHistory(`Игрок ${m.name} забрал вклад при увольнении: ${formatMoney(balance)}`);
     }
   }
@@ -831,6 +830,7 @@ function hireMember(id) {
   const m = state.members.find(x => x.id === id);
   if (!m) return;
   m.fired = false;
+  if (m.role === 'Игрок') ensureAccount(m.name);
   saveState();
   renderMembers();
   renderBank();
@@ -841,13 +841,8 @@ async function deleteMember(id) {
   if (!m) return;
   const ok = await showConfirm(`Удалить «${m.name}» навсегда? Это действие необратимо.`, 'Удалить', 'Отмена');
   if (!ok) return;
-  const acc = state.accounts[m.name];
-  const balance = acc ? getAccountBalance(m.name) : 0;
-  if (balance !== 0) {
-    const ok2 = await showConfirm(`У него остался счёт в банке: ${formatMoney(balance)}. Счёт будет обнулён. Продолжить?`, 'Продолжить', 'Отмена');
-    if (!ok2) return;
-    state.accounts[m.name] = { personalIn: 0, personalOut: 0, commonShare: 0, commonExpenseShare: 0 };
-  }
+
+  // Удаляем из состава. Счёт НЕ трогаем — он останется в банке (если был).
   state.members = state.members.filter(x => x.id !== id);
   saveState();
   renderMembers();
@@ -888,6 +883,7 @@ function renderBank() {
     `Общих доходов: <span>${formatMoney(state.totals.commonIncome)}</span> · ` +
     `Общих трат: <span>${formatMoney(state.totals.commonExpense)}</span>`;
 
+  // Показываем: всех игроков из состава (включая уволенных) + всех, у кого есть счёт
   const names = new Set();
   state.members.forEach(m => { if (m.role === 'Игрок') names.add(m.name); });
   Object.keys(state.accounts).forEach(n => names.add(n));
@@ -902,7 +898,9 @@ function renderBank() {
 
   const arr = Array.from(names).map(name => {
     const member = state.members.find(m => m.name === name);
-    return { name, fired: member ? member.fired : true, member };
+    // Если member нет — значит, удалён навсегда (или счёт остался от удалённого)
+    const fired = member ? member.fired : true;
+    return { name, fired, member };
   });
   arr.sort((a, b) => {
     if (a.fired !== b.fired) return a.fired ? 1 : -1;
@@ -923,16 +921,18 @@ function renderBank() {
     const div = document.createElement('div');
     div.className = 'bank-player' + (fired ? ' fired' : '');
     const statsClass = 'bp-stats ' + balanceClass;
-    const controls = fired
-      ? ''
-      : `<div class="bp-controls">
+    // Управлять деньгами можно, только если игрок активен (есть в составе и не уволен)
+    const canControl = !fired;
+    const controls = canControl
+      ? `<div class="bp-controls">
            <input type="number" min="0" step="1" placeholder="Сумма" data-amount="${escapeAttr(name)}">
            <button class="small" data-deposit="${escapeAttr(name)}">Вложить</button>
            <button class="small secondary" data-withdraw="${escapeAttr(name)}">Снять</button>
-         </div>`;
+         </div>`
+      : '';
     div.innerHTML = `
       <div class="bp-head">
-        <span class="bp-name">${escapeHtml(name)}${fired ? ' (уволен)' : ''}</span>
+        <span class="bp-name">${escapeHtml(name)}${fired ? ' (не в составе)' : ''}</span>
       </div>
       <div class="${statsClass}">
         <span>${balanceLabel}: <b>${formatMoney(balance)}</b></span>
@@ -968,8 +968,7 @@ function renderBank() {
 
 function deposit(name, amount) {
   showError('bank-error', '');
-  const acc = state.accounts[name];
-  if (!acc) { showError('bank-error', 'Счёт не найден'); return; }
+  const acc = ensureAccount(name);   // ← создаём счёт, если его нет
   acc.personalIn += amount;
   logHistory(`Игрок ${name} сделал личный вклад ${formatMoney(amount)}`);
   saveState();
@@ -978,8 +977,7 @@ function deposit(name, amount) {
 
 async function withdraw(name, amount) {
   showError('bank-error', '');
-  const acc = state.accounts[name];
-  if (!acc) { showError('bank-error', 'Счёт не найден'); return; }
+  const acc = ensureAccount(name);   // ← создаём счёт, если его нет
   const balance = getAccountBalance(name);
   const bank = getBankTotal();
   const limit = Math.max(0, Math.min(balance, bank));
@@ -1004,10 +1002,7 @@ function commonIncome(amount) {
   if (amount <= 0) { showError('bank-error', 'Сумма должна быть > 0'); return; }
   const per = floorTenths(amount / players.length);
   players.forEach(p => {
-    if (!state.accounts[p.name]) {
-      state.accounts[p.name] = { personalIn: 0, personalOut: 0, commonShare: 0, commonExpenseShare: 0 };
-    }
-    state.accounts[p.name].commonShare += per;
+    ensureAccount(p.name).commonShare += per;
   });
   const distributed = per * players.length;
   state.totals.commonIncome += distributed;
@@ -1025,10 +1020,7 @@ function commonExpense(amount) {
   if (amount > bank) { showError('bank-error', 'В банке недостаточно средств'); return; }
   const per = floorTenths(amount / players.length);
   players.forEach(p => {
-    if (!state.accounts[p.name]) {
-      state.accounts[p.name] = { personalIn: 0, personalOut: 0, commonShare: 0, commonExpenseShare: 0 };
-    }
-    state.accounts[p.name].commonExpenseShare += per;
+    ensureAccount(p.name).commonExpenseShare += per;
   });
   const distributed = per * players.length;
   state.totals.commonExpense += distributed;
@@ -1038,12 +1030,13 @@ function commonExpense(amount) {
 }
 
 async function resetBank() {
-  const ok = await showConfirm('Сбросить банк? Все счета, долги и общие суммы обнулятся. Состав гильдии останется.');
+  const ok = await showConfirm('Сбросить банк? Все счета, долги, общие суммы и история операций обнулятся. Состав гильдии останется.');
   if (!ok) return;
   for (const name in state.accounts) {
     state.accounts[name] = { personalIn: 0, personalOut: 0, commonShare: 0, commonExpenseShare: 0 };
   }
   state.totals = { commonIncome: 0, commonExpense: 0 };
+  state.history = [];   // ← очищаем историю
   saveState();
   renderBank();
   showError('bank-error', '');
