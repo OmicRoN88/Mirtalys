@@ -55,7 +55,7 @@
     gap: 10px;
     justify-content: center;
     padding: 24px 16px;
-    max-width: 760px;
+    max-width: 900px;
     margin: 0 auto;
   }
   .main-menu button {
@@ -63,12 +63,12 @@
     border: 1px solid var(--border);
     color: var(--text);
     border-radius: 12px;
-    padding: 18px 28px;
-    font-size: 1.05rem;
+    padding: 18px 24px;
+    font-size: 1rem;
     font-weight: 500;
     cursor: pointer;
     transition: all 0.2s;
-    min-width: 130px;
+    min-width: 120px;
   }
   .main-menu button:hover {
     background: var(--panel-2);
@@ -93,7 +93,7 @@
     border-radius: 16px;
     padding: 24px;
     width: 100%;
-    max-width: 680px;
+    max-width: 720px;
     position: relative;
     animation: fadeIn 0.15s ease;
   }
@@ -391,6 +391,71 @@
   }
   .wh-item .wh-controls input { width: 80px; }
 
+  /* ---------- ТОРГОВЦЫ ---------- */
+  .trader-filters {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 12px;
+    flex-wrap: wrap;
+  }
+  .trader-filters .field { flex: 1; min-width: 140px; }
+
+  .trader-city-title {
+    font-size: 0.85rem;
+    color: var(--gold);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin: 18px 0 8px;
+    padding-bottom: 4px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .trader-card {
+    background: var(--panel-2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 12px 14px;
+    margin-bottom: 8px;
+  }
+  .trader-card .tc-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 6px;
+  }
+  .trader-card .tc-name { font-weight: 600; }
+  .trader-card .tc-category {
+    font-size: 0.75rem;
+    padding: 2px 8px;
+    border-radius: 999px;
+    background: rgba(124,92,255,0.15);
+    color: var(--accent);
+    margin-left: 8px;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+  }
+  .trader-card .tc-stats {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 14px;
+    font-size: 0.82rem;
+    color: var(--text-dim);
+    margin-bottom: 8px;
+  }
+  .trader-card .tc-stats span b { font-weight: 600; }
+  .trader-card .tc-discount-positive b { color: var(--success); }
+  .trader-card .tc-discount-negative b { color: var(--error); }
+  .trader-card .tc-discount-zero b { color: var(--text); }
+  .trader-card .tc-controls {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+  .trader-card .tc-controls input { width: 100px; }
+
   .dialog-overlay {
     position: fixed;
     inset: 0;
@@ -416,7 +481,7 @@
   @media (max-width: 480px) {
     .modal { padding: 18px; }
     .bank-total { font-size: 1.9rem; }
-    .main-menu button { padding: 14px 20px; min-width: 110px; font-size: 0.95rem; }
+    .main-menu button { padding: 14px 18px; min-width: 100px; font-size: 0.9rem; }
   }
 </style>
 </head>
@@ -432,6 +497,7 @@
   <button data-modal="date">Дата</button>
   <button data-modal="bank">Банк</button>
   <button data-modal="warehouse">Склад</button>
+  <button data-modal="traders">Торговцы</button>
   <button data-modal="business">Бизнес</button>
 </div>
 
@@ -608,6 +674,54 @@
   </div>
 </div>
 
+<!-- ТОРГОВЦЫ -->
+<div class="modal-overlay" id="modal-traders" style="display:none;">
+  <div class="modal">
+    <button class="modal-close" data-close>×</button>
+    <h2>Торговцы</h2>
+
+    <div class="section-title">Добавить торговца</div>
+    <div class="row">
+      <div class="field">
+        <label for="tr-city">Город</label>
+        <input type="text" id="tr-city" list="tr-cities-list" placeholder="Воронеж">
+        <datalist id="tr-cities-list"></datalist>
+      </div>
+      <div class="field">
+        <label for="tr-name">Имя</label>
+        <input type="text" id="tr-name" placeholder="Иван">
+      </div>
+      <div class="field">
+        <label for="tr-category">Категория</label>
+        <select id="tr-category"></select>
+      </div>
+      <div class="field">
+        <label for="tr-reputation">Репутация (−100…+100)</label>
+        <input type="number" id="tr-reputation" min="-100" max="100" step="1" value="0" placeholder="0">
+      </div>
+    </div>
+    <button id="btn-add-trader">Добавить</button>
+    <div class="error" id="tr-error"></div>
+
+    <div class="section-title">Список торговцев</div>
+    <div class="trader-filters">
+      <div class="field">
+        <label for="tr-filter-city">Город</label>
+        <select id="tr-filter-city">
+          <option value="all">Все города</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="tr-filter-category">Категория</label>
+        <select id="tr-filter-category">
+          <option value="all">Все категории</option>
+        </select>
+      </div>
+    </div>
+    <div id="tr-list"></div>
+  </div>
+</div>
+
 <!-- БИЗНЕС -->
 <div class="modal-overlay" id="modal-business" style="display:none;">
   <div class="modal">
@@ -636,6 +750,10 @@ const WAREHOUSE_CATEGORIES = ['Оружие', 'Броня', 'Снаряжени�
                               'Ресурсы', 'Пища', 'Расходники', 'Маг. предмет'];
 const WAREHOUSE_UNITS = ['шт.', 'кг', 'л', 'м'];
 
+const TRADER_CATEGORIES = ['Оружейник', 'Бронник', 'Лекарь', 'Травник', 'Кузнец',
+                           'Ювелир', 'Алхимик', 'Торговец едой', 'Торговец снаряжением',
+                           'Магический торговец', 'Прочее'];
+
 function defaultState() {
   return {
     date: { year: 1852, month: 11, day: 27, hours: 12, minutes: 30 },
@@ -646,7 +764,8 @@ function defaultState() {
     expenses: [],
     expensesLastPaidMonth: null,
     expensesLastPaidAmount: 0,
-    warehouse: []
+    warehouse: [],
+    traders: []
   };
 }
 
@@ -665,6 +784,7 @@ function loadState() {
     if (!s.expensesLastPaidMonth) s.expensesLastPaidMonth = null;
     if (typeof s.expensesLastPaidAmount !== 'number') s.expensesLastPaidAmount = 0;
     if (!Array.isArray(s.warehouse)) s.warehouse = [];
+    if (!Array.isArray(s.traders)) s.traders = [];
     s.members.forEach(m => { if (typeof m.fired !== 'boolean') m.fired = false; });
     return s;
   } catch {
@@ -1105,7 +1225,6 @@ function renderBank() {
   container.querySelectorAll('[data-remove-account]').forEach(btn => {
     btn.addEventListener('click', () => {
       const name = btn.dataset.removeAccount;
-      // Деньги просто исчезают (сгорают)
       delete state.accounts[name];
       saveState();
       renderBank();
@@ -1153,7 +1272,6 @@ function commonIncome(amount) {
   players.forEach(p => {
     ensureAccount(p.name).commonShare += per;
   });
-  // Остаток сгорает — никуда не добавляем
   state.totals.commonIncome = roundTenths(state.totals.commonIncome + amount);
   logHistory(`Гильдия пополнила счёт на ${formatMoney(amount)}`);
   saveState();
@@ -1168,7 +1286,6 @@ function commonExpense(amount) {
   const bank = getBankTotal();
   if (amount > bank) { showError('bank-error', 'В банке недостаточно средств'); return; }
 
-  // Округление ВВЕРХ — вкладчики платят чуть больше, остаток сгорает у них
   const per = ceilTenths(amount / players.length);
   players.forEach(p => {
     ensureAccount(p.name).commonExpenseShare += per;
@@ -1316,7 +1433,6 @@ async function payExpenses() {
 
   const players = getPlayers();
   if (!players.length) { showError('pay-error', 'Нет игроков для распределения траты'); return; }
-  // Округление ВВЕРХ — вкладчики платят чуть больше
   const per = ceilTenths(amountToPay / players.length);
   players.forEach(p => {
     ensureAccount(p.name).commonExpenseShare += per;
@@ -1357,7 +1473,6 @@ function renderWarehouse() {
     return;
   }
 
-  // Группировка по категориям
   const byCategory = {};
   items.forEach(i => {
     if (!byCategory[i.category]) byCategory[i.category] = [];
@@ -1390,7 +1505,6 @@ function renderWarehouse() {
 
   list.innerHTML = html;
 
-  // Обработчики
   list.querySelectorAll('[data-wh-add]').forEach(btn => {
     btn.addEventListener('click', () => {
       const id = btn.dataset.whAdd;
@@ -1463,13 +1577,11 @@ $('btn-add-item').addEventListener('click', () => {
   if (!name) { showError('wh-error', 'Введите название'); return; }
   if (isNaN(qty) || qty <= 0) { showError('wh-error', 'Количество должно быть > 0'); return; }
 
-  // Проверка: для шт. и м — только целые
   if ((unit === 'шт.' || unit === 'м') && !Number.isInteger(qty)) {
     showError('wh-error', 'Для этой единицы измерения количество должно быть целым');
     return;
   }
 
-  // Если предмет с таким названием и единицей уже есть — суммируем
   const existing = state.warehouse.find(i =>
     i.name.toLowerCase() === name.toLowerCase() && i.unit === unit
   );
@@ -1488,6 +1600,163 @@ $('btn-add-item').addEventListener('click', () => {
 });
 
 /* ============================================================
+   ТОРГОВЦЫ
+   ============================================================ */
+
+function getTraderPercent(rep) {
+  return Math.round(rep / 5);
+}
+
+function renderTraders() {
+  const filterCity = $('tr-filter-city').value;
+  const filterCat = $('tr-filter-category').value;
+
+  // Обновляем datalist городов
+  updateCityDatalist();
+
+  let items = state.traders.slice();
+  if (filterCity !== 'all') items = items.filter(t => t.city === filterCity);
+  if (filterCat !== 'all') items = items.filter(t => t.category === filterCat);
+
+  const list = $('tr-list');
+  if (!items.length) {
+    list.innerHTML = '<div class="empty">Нет торговцев</div>';
+    return;
+  }
+
+  // Группировка по городам
+  const byCity = {};
+  items.forEach(t => {
+    if (!byCity[t.city]) byCity[t.city] = [];
+    byCity[t.city].push(t);
+  });
+
+  let html = '';
+  Object.keys(byCity).sort().forEach(city => {
+    html += `<div class="trader-city-title">${escapeHtml(city)}</div>`;
+    byCity[city].sort((a, b) => {
+      const catCmp = a.category.localeCompare(b.category);
+      if (catCmp !== 0) return catCmp;
+      return a.name.localeCompare(b.name);
+    });
+    byCity[city].forEach(t => {
+      const pct = getTraderPercent(t.reputation);
+      let discountClass, discountLabel;
+      if (pct > 0) { discountClass = 'tc-discount-positive'; discountLabel = `Скидка: −${pct}%`; }
+      else if (pct < 0) { discountClass = 'tc-discount-negative'; discountLabel = `Надбавка: +${Math.abs(pct)}%`; }
+      else { discountClass = 'tc-discount-zero'; discountLabel = 'Нейтрально'; }
+
+      html += `
+        <div class="trader-card">
+          <div class="tc-head">
+            <span class="tc-name">${escapeHtml(t.name)}<span class="tc-category">${escapeHtml(t.category)}</span></span>
+          </div>
+          <div class="tc-stats">
+            <span>Репутация: <b>${t.reputation}</b></span>
+            <span class="${discountClass}">${discountLabel}</span>
+          </div>
+          <div class="tc-controls">
+            <input type="number" min="-100" max="100" step="1" value="${t.reputation}" data-tr-rep="${t.id}">
+            <button class="small" data-tr-save="${t.id}">Сохранить</button>
+            <button class="danger small" data-tr-delete="${t.id}">Удалить</button>
+          </div>
+        </div>
+      `;
+    });
+  });
+
+  list.innerHTML = html;
+
+  list.querySelectorAll('[data-tr-save]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const id = btn.dataset.trSave;
+      const input = list.querySelector(`[data-tr-rep="${cssEscape(id)}"]`);
+      const val = parseInt(input.value, 10);
+      if (isNaN(val) || val < -100 || val > 100) {
+        showError('tr-error', 'Репутация должна быть от −100 до +100');
+        return;
+      }
+      const trader = state.traders.find(t => t.id === id);
+      if (!trader) return;
+      trader.reputation = val;
+      saveState();
+      renderTraders();
+      showError('tr-error', '');
+    });
+  });
+  list.querySelectorAll('[data-tr-delete]').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const id = btn.dataset.trDelete;
+      const trader = state.traders.find(t => t.id === id);
+      if (!trader) return;
+      const ok = await showConfirm(`Удалить торговца «${trader.name}» (${trader.city})?`, 'Удалить', 'Отмена');
+      if (!ok) return;
+      state.traders = state.traders.filter(t => t.id !== id);
+      saveState();
+      renderTraders();
+      showError('tr-error', '');
+    });
+  });
+}
+
+function updateCityDatalist() {
+  const cities = new Set(state.traders.map(t => t.city));
+  const datalist = $('tr-cities-list');
+  datalist.innerHTML = Array.from(cities).sort().map(c =>
+    `<option value="${escapeAttr(c)}"></option>`
+  ).join('');
+
+  // Обновляем фильтр городов
+  const filterCity = $('tr-filter-city');
+  const current = filterCity.value;
+  filterCity.innerHTML = '<option value="all">Все города</option>';
+  Array.from(cities).sort().forEach(c => {
+    const opt = document.createElement('option');
+    opt.value = c;
+    opt.textContent = c;
+    filterCity.appendChild(opt);
+  });
+  if (Array.from(cities).includes(current)) filterCity.value = current;
+}
+
+$('btn-add-trader').addEventListener('click', () => {
+  showError('tr-error', '');
+  const city = $('tr-city').value.trim();
+  const name = $('tr-name').value.trim();
+  const category = $('tr-category').value;
+  const rep = parseInt($('tr-reputation').value, 10);
+
+  if (!city) { showError('tr-error', 'Введите город'); return; }
+  if (!name) { showError('tr-error', 'Введите имя'); return; }
+  if (isNaN(rep) || rep < -100 || rep > 100) {
+    showError('tr-error', 'Репутация должна быть от −100 до +100');
+    return;
+  }
+
+  const existing = state.traders.find(t =>
+    t.city.toLowerCase() === city.toLowerCase() &&
+    t.name.toLowerCase() === name.toLowerCase()
+  );
+  if (existing) {
+    showError('tr-error', 'Торговец с таким именем уже есть в этом городе');
+    return;
+  }
+
+  state.traders.push({
+    id: Date.now() + '_' + Math.random().toString(36).slice(2, 7),
+    city, name, category, reputation: rep
+  });
+  saveState();
+  $('tr-city').value = '';
+  $('tr-name').value = '';
+  $('tr-reputation').value = '0';
+  renderTraders();
+});
+
+$('tr-filter-city').addEventListener('change', renderTraders);
+$('tr-filter-category').addEventListener('change', renderTraders);
+
+/* ============================================================
    МОДАЛЬНЫЕ ОКНА
    ============================================================ */
 
@@ -1501,6 +1770,7 @@ function openModal(name) {
   if (name === 'history') renderHistory();
   if (name === 'expenses') { renderExpenses(); showError('pay-error', ''); }
   if (name === 'warehouse') { renderWarehouse(); showError('wh-error', ''); }
+  if (name === 'traders') { renderTraders(); showError('tr-error', ''); }
 }
 
 function closeModal(el) { el.style.display = 'none'; }
@@ -1621,7 +1891,7 @@ $('btn-expenses').addEventListener('click', () => openModal('expenses'));
 $('btn-reset-bank').addEventListener('click', resetBank);
 
 /* ============================================================
-   СКЛАД — инициализация выпадающих списков
+   ИНИЦИАЛИЗАЦИЯ ВЫПАДАЮЩИХ СПИСКОВ
    ============================================================ */
 
 (function initWarehouseSelects() {
@@ -1642,7 +1912,23 @@ $('btn-reset-bank').addEventListener('click', resetBank);
   });
 })();
 
-$('wh-filter').addEventListener('change', renderWarehouse);
+(function initTraderSelects() {
+  const catSel = $('tr-category');
+  TRADER_CATEGORIES.forEach(c => {
+    const opt = document.createElement('option');
+    opt.value = c;
+    opt.textContent = c;
+    catSel.appendChild(opt);
+  });
+
+  const filterCat = $('tr-filter-category');
+  TRADER_CATEGORIES.forEach(c => {
+    const opt = document.createElement('option');
+    opt.value = c;
+    opt.textContent = c;
+    filterCat.appendChild(opt);
+  });
+})();
 
 /* ============================================================
    ИНИЦИАЛИЗАЦИЯ
