@@ -1,0 +1,964 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Мирталис</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #12121a;
+    --panel: #1c1c28;
+    --panel-2: #242434;
+    --border: #2e2e42;
+    --text: #e4e4ef;
+    --text-dim: #8a8aa0;
+    --accent: #7c5cff;
+    --accent-hover: #9078ff;
+    --error: #ff5c6c;
+    --success: #4ade80;
+    --warning: #ffb86b;
+    --gold: #ffd166;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    min-height: 100vh;
+    line-height: 1.4;
+  }
+
+  /* ---------- ШАПКА ---------- */
+  .topbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 20px;
+    background: var(--panel);
+    border-bottom: 1px solid var(--border);
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+  .topbar .date-line {
+    font-size: 0.9rem;
+    color: var(--text-dim);
+    letter-spacing: 0.3px;
+  }
+  .topbar .date-line strong { color: var(--text); font-weight: 600; }
+
+  /* ---------- ГЛАВНОЕ МЕНЮ ---------- */
+  .main-menu {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    justify-content: center;
+    padding: 24px 16px;
+    max-width: 760px;
+    margin: 0 auto;
+  }
+  .main-menu button {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    color: var(--text);
+    border-radius: 12px;
+    padding: 18px 28px;
+    font-size: 1.05rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+    min-width: 130px;
+  }
+  .main-menu button:hover {
+    background: var(--panel-2);
+    border-color: var(--accent);
+    transform: translateY(-2px);
+  }
+
+  /* ---------- МОДАЛЬНЫЕ ОКНА ---------- */
+  .modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.65);
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    padding: 40px 16px;
+    overflow-y: auto;
+    z-index: 200;
+  }
+  .modal {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 24px;
+    width: 100%;
+    max-width: 680px;
+    position: relative;
+    animation: fadeIn 0.15s ease;
+  }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: none; } }
+
+  .modal h2 {
+    font-size: 1.2rem;
+    color: var(--accent);
+    margin-bottom: 18px;
+  }
+  .modal-close {
+    position: absolute;
+    top: 12px;
+    right: 14px;
+    background: transparent;
+    border: none;
+    color: var(--text-dim);
+    font-size: 1.4rem;
+    cursor: pointer;
+    padding: 4px 8px;
+    border-radius: 6px;
+  }
+  .modal-close:hover { color: var(--text); background: var(--panel-2); }
+
+  /* ---------- ФОРМЫ ---------- */
+  .row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 10px;
+    margin-bottom: 12px;
+  }
+  .field { display: flex; flex-direction: column; gap: 5px; }
+  .field label {
+    font-size: 0.75rem;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+  }
+  input, select {
+    background: var(--panel-2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text);
+    padding: 9px 11px;
+    font-size: 0.95rem;
+    font-family: inherit;
+    outline: none;
+    width: 100%;
+    transition: border-color 0.2s;
+  }
+  input:focus, select:focus { border-color: var(--accent); }
+  input[type=number] { -moz-appearance: textfield; }
+  input::-webkit-outer-spin-button,
+  input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+
+  button {
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    padding: 10px 18px;
+    font-size: 0.9rem;
+    font-weight: 500;
+    font-family: inherit;
+    cursor: pointer;
+    transition: background 0.2s, transform 0.1s;
+  }
+  button:hover { background: var(--accent-hover); }
+  button:active { transform: scale(0.98); }
+  button.secondary {
+    background: var(--panel-2);
+    border: 1px solid var(--border);
+    color: var(--text);
+  }
+  button.secondary:hover { background: #2e2e44; }
+  button.small { padding: 6px 12px; font-size: 0.8rem; }
+  button.danger { background: #b03040; }
+  button.danger:hover { background: #d04050; }
+
+  .error {
+    color: var(--error);
+    font-size: 0.82rem;
+    min-height: 1.1em;
+    margin-top: 4px;
+  }
+  .hint { font-size: 0.75rem; color: var(--text-dim); margin-top: 3px; }
+
+  /* ---------- СПИСКИ ---------- */
+  .member-list { margin-top: 18px; display: flex; flex-direction: column; gap: 8px; }
+  .member-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: var(--panel-2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 10px 14px;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+  .member-row .member-name { font-weight: 600; }
+  .member-row .member-role {
+    font-size: 0.75rem;
+    padding: 2px 8px;
+    border-radius: 999px;
+    background: rgba(124,92,255,0.15);
+    color: var(--accent);
+    margin-left: 8px;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+  }
+  .member-row .role-manager { background: rgba(255,209,102,0.15); color: var(--gold); }
+  .member-row .role-player { background: rgba(74,222,128,0.15); color: var(--success); }
+  .member-row .role-employee { background: rgba(124,92,255,0.15); color: var(--accent); }
+  .member-row .role-merc { background: rgba(255,92,108,0.15); color: var(--error); }
+
+  /* ---------- БАНК ---------- */
+  .bank-total {
+    text-align: center;
+    font-size: 2.4rem;
+    font-weight: 700;
+    color: var(--gold);
+    margin: 10px 0 4px;
+  }
+  .bank-sub {
+    text-align: center;
+    font-size: 0.85rem;
+    color: var(--text-dim);
+    margin-bottom: 16px;
+  }
+  .bank-sub span { color: var(--text); font-weight: 600; }
+
+  .bank-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 16px;
+    justify-content: center;
+  }
+
+  .bank-player {
+    background: var(--panel-2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 12px 14px;
+    margin-bottom: 10px;
+  }
+  .bank-player .bp-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 8px;
+  }
+  .bank-player .bp-name { font-weight: 600; }
+  .bank-player .bp-stats {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 14px;
+    font-size: 0.82rem;
+    color: var(--text-dim);
+    margin-bottom: 8px;
+  }
+  .bank-player .bp-stats span b { color: var(--text); font-weight: 600; }
+  .bank-player .bp-stats .neg b { color: var(--error); }
+  .bank-player .bp-controls {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+  .bank-player .bp-controls input { width: 110px; }
+
+  /* ---------- ДАТА ---------- */
+  .date-display-big {
+    text-align: center;
+    font-size: 1.3rem;
+    font-weight: 600;
+    margin-bottom: 18px;
+    color: var(--text);
+  }
+  .date-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    justify-content: center;
+    margin-bottom: 18px;
+  }
+  .date-actions button { min-width: 150px; }
+
+  /* ---------- ПРОЧЕЕ ---------- */
+  .empty { color: var(--text-dim); font-style: italic; padding: 12px; text-align: center; }
+  .section-title { font-size: 0.9rem; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.5px; margin: 18px 0 8px; }
+
+  @media (max-width: 480px) {
+    .modal { padding: 18px; }
+    .bank-total { font-size: 1.9rem; }
+    .main-menu button { padding: 14px 20px; min-width: 110px; font-size: 0.95rem; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ================= ШАПКА ================= -->
+<div class="topbar">
+  <div></div>
+  <div class="date-line" id="topbar-date">—</div>
+</div>
+
+<!-- ================= ГЛАВНОЕ МЕНЮ ================= -->
+<div class="main-menu">
+  <button data-modal="members">Состав</button>
+  <button data-modal="date">Дата</button>
+  <button data-modal="bank">Банк</button>
+  <button data-modal="inventory">Инвентарь</button>
+  <button data-modal="business">Бизнес</button>
+</div>
+
+<!-- ================= МОДАЛЬНЫЕ ОКНА ================= -->
+
+<!-- СОСТАВ -->
+<div class="modal-overlay" id="modal-members" style="display:none;">
+  <div class="modal">
+    <button class="modal-close" data-close>×</button>
+    <h2>Состав гильдии</h2>
+    <div class="row">
+      <div class="field" style="grid-column: span 2;">
+        <label for="member-name">Имя</label>
+        <input type="text" id="member-name" placeholder="Имя персонажа или НИП">
+      </div>
+      <div class="field">
+        <label for="member-role">Должность</label>
+        <select id="member-role">
+          <option value="Управляющий">Управляющий</option>
+          <option value="Игрок">Игрок</option>
+          <option value="Сотрудник">Сотрудник</option>
+          <option value="Наёмник">Наёмник</option>
+        </select>
+      </div>
+    </div>
+    <button id="btn-add-member">Добавить</button>
+    <div class="error" id="members-error"></div>
+
+    <div class="member-list" id="members-list"></div>
+  </div>
+</div>
+
+<!-- ДАТА -->
+<div class="modal-overlay" id="modal-date" style="display:none;">
+  <div class="modal">
+    <button class="modal-close" data-close>×</button>
+    <h2>Дата и время</h2>
+
+    <div class="date-display-big" id="date-display-big">—</div>
+
+    <div class="date-actions">
+      <button id="btn-short-rest" class="secondary">Короткий отдых (+1 ч)</button>
+      <button id="btn-long-rest" class="secondary">Длительный отдых (+8 ч)</button>
+      <button id="btn-next-day" class="secondary">Следующий день (07:00)</button>
+    </div>
+
+    <div class="section-title">Установить вручную</div>
+    <div class="row">
+      <div class="field">
+        <label for="set-year">Год</label>
+        <input type="number" id="set-year" min="1" step="1">
+      </div>
+      <div class="field">
+        <label for="set-month">Месяц</label>
+        <select id="set-month"></select>
+      </div>
+      <div class="field">
+        <label for="set-day">День</label>
+        <input type="number" id="set-day" min="1" max="31" step="1">
+      </div>
+      <div class="field">
+        <label for="set-time">Время</label>
+        <select id="set-time"></select>
+      </div>
+    </div>
+    <button id="btn-set-date">Установить</button>
+    <div class="error" id="date-error"></div>
+  </div>
+</div>
+
+<!-- БАНК -->
+<div class="modal-overlay" id="modal-bank" style="display:none;">
+  <div class="modal">
+    <button class="modal-close" data-close>×</button>
+    <h2>Гильдийский банк</h2>
+
+    <div class="bank-total" id="bank-total">0 ЗМ</div>
+    <div class="bank-sub" id="bank-sub">Вкладов: 0 · Потрачено: 0 · Доходов: 0</div>
+
+    <div class="bank-actions">
+      <button id="btn-common-income" class="secondary">Общий доход</button>
+      <button id="btn-common-expense" class="secondary">Общая трата</button>
+    </div>
+
+    <div class="section-title">Вкладчики (Игроки)</div>
+    <div id="bank-players"></div>
+    <div class="error" id="bank-error"></div>
+  </div>
+</div>
+
+<!-- ИНВЕНТАРЬ -->
+<div class="modal-overlay" id="modal-inventory" style="display:none;">
+  <div class="modal">
+    <button class="modal-close" data-close>×</button>
+    <h2>Инвентарь</h2>
+    <div class="empty">Раздел в разработке 🛠️</div>
+  </div>
+</div>
+
+<!-- БИЗНЕС -->
+<div class="modal-overlay" id="modal-business" style="display:none;">
+  <div class="modal">
+    <button class="modal-close" data-close>×</button>
+    <h2>Бизнес</h2>
+    <div class="empty">Раздел в разработке 🛠️</div>
+  </div>
+</div>
+
+<script>
+/* ============================================================
+   МИРТАЛИС — состояние и хранилище
+   ============================================================ */
+
+const STORAGE_KEY = 'mirtalis_state_v1';
+
+const MONTHS = ['января','февраля','марта','апреля','мая','июня',
+                'июля','августа','сентября','октября','ноября','декабря'];
+const WEEKDAYS = ['Воскресенье','Понедельник','Вторник','Среда',
+                  'Четверг','Пятница','Суббота'];
+
+// Количество дней в месяцах (как в 2026 году, без високосных)
+const DAYS_IN_MONTH = [31,28,31,30,31,30,31,31,30,31,30,31];
+
+// Стартовое состояние
+function defaultState() {
+  return {
+    date: {
+      year: 1852,
+      month: 11,     // 1..12
+      day: 27,       // 1..31
+      hours: 12,     // 0..23
+      minutes: 30    // 0..30 (шаг 30)
+    },
+    members: [],     // { id, name, role }
+    accounts: {},    // { name: { personalIn, personalOut, commonShare, commonExpenseShare } }
+    totals: {
+      commonIncome: 0,
+      commonExpense: 0
+    }
+  };
+}
+
+let state = loadState();
+
+function loadState() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return defaultState();
+    const s = JSON.parse(raw);
+    // Минимальная валидация
+    if (!s.date || !Array.isArray(s.members)) return defaultState();
+    if (!s.accounts) s.accounts = {};
+    if (!s.totals) s.totals = { commonIncome: 0, commonExpense: 0 };
+    return s;
+  } catch {
+    return defaultState();
+  }
+}
+
+function saveState() {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+}
+
+/* ============================================================
+   ДАТА
+   ============================================================ */
+
+function formatDate(date) {
+  const wd = WEEKDAYS[weekdayIndex(date)];
+  const month = MONTHS[date.month - 1];
+  const hh = String(date.hours).padStart(2, '0');
+  const mm = String(date.minutes).padStart(2, '0');
+  return `${wd}, ${date.day} ${month}, ${date.year} год. ${hh}:${mm}`;
+}
+
+// Индекс дня недели (0 = Воскресенье). Используем формулу Зеллера (григорианский календарь)
+function weekdayIndex(date) {
+  let y = date.year;
+  let m = date.month;
+  const d = date.day;
+  if (m < 3) { m += 12; y -= 1; }
+  const K = y % 100;
+  const J = Math.floor(y / 100);
+  let h = (d + Math.floor(13 * (m + 1) / 5) + K + Math.floor(K / 4) +
+           Math.floor(J / 4) + 5 * J) % 7;
+  // h: 0 = Суббота, 1 = Воскресенье, 2 = Понедельник, ...
+  // Переведём в 0 = Воскресенье
+  const map = {0:6, 1:0, 2:1, 3:2, 4:3, 5:4, 6:5};
+  return map[h];
+}
+
+function daysInMonth(month) {
+  return DAYS_IN_MONTH[month - 1];
+}
+
+// Прибавить минуты к дате (с переносом через часы/дни/месяцы/годы)
+function addMinutes(date, minutes) {
+  const d = { ...date };
+  d.minutes += minutes;
+  while (d.minutes >= 60) { d.minutes -= 60; d.hours += 1; }
+  while (d.hours >= 24) { d.hours -= 24; d.day += 1; }
+  while (d.day > daysInMonth(d.month)) {
+    d.day -= daysInMonth(d.month);
+    d.month += 1;
+    if (d.month > 12) { d.month = 1; d.year += 1; }
+  }
+  return d;
+}
+
+function nextDayMorning(date) {
+  const d = { ...date };
+  d.day += 1;
+  if (d.day > daysInMonth(d.month)) {
+    d.day = 1;
+    d.month += 1;
+    if (d.month > 12) { d.month = 1; d.year += 1; }
+  }
+  d.hours = 7;
+  d.minutes = 0;
+  return d;
+}
+
+function updateDateDisplay() {
+  const formatted = formatDate(state.date);
+  $('topbar-date').innerHTML = formatted;
+  $('date-display-big').textContent = formatted;
+}
+
+/* ============================================================
+   СОСТАВ
+   ============================================================ */
+
+const ROLE_ORDER = ['Управляющий', 'Игрок', 'Сотрудник', 'Наёмник'];
+const ROLE_CLASS = {
+  'Управляющий': 'role-manager',
+  'Игрок': 'role-player',
+  'Сотрудник': 'role-employee',
+  'Наёмник': 'role-merc'
+};
+
+function getPlayers() {
+  return state.members.filter(m => m.role === 'Игрок');
+}
+
+function renderMembers() {
+  const list = $('members-list');
+  if (!state.members.length) {
+    list.innerHTML = '<div class="empty">Пока никого нет</div>';
+    return;
+  }
+  // Сортировка: по роли (в порядке ROLE_ORDER), внутри — по порядку добавления
+  const sorted = [...state.members].sort((a, b) => {
+    return ROLE_ORDER.indexOf(a.role) - ROLE_ORDER.indexOf(b.role);
+  });
+  list.innerHTML = '';
+  sorted.forEach(m => {
+    const row = document.createElement('div');
+    row.className = 'member-row';
+    row.innerHTML = `
+      <div>
+        <span class="member-name">${escapeHtml(m.name)}</span>
+        <span class="member-role ${ROLE_CLASS[m.role] || ''}">${m.role}</span>
+      </div>
+      <button class="danger small" data-fire="${m.id}">Уволить</button>
+    `;
+    list.appendChild(row);
+  });
+  list.querySelectorAll('[data-fire]').forEach(btn => {
+    btn.addEventListener('click', () => fireMember(btn.dataset.fire));
+  });
+}
+
+function addMember(name, role) {
+  name = name.trim();
+  if (!name) { showError('members-error', 'Введите имя'); return; }
+  if (state.members.some(m => m.name.toLowerCase() === name.toLowerCase())) {
+    showError('members-error', 'Персонаж с таким именем уже есть');
+    return;
+  }
+  state.members.push({ id: Date.now() + '_' + Math.random().toString(36).slice(2, 7), name, role });
+  // Если это Игрок — создаём/восстанавливаем счёт
+  if (role === 'Игрок' && !state.accounts[name]) {
+    state.accounts[name] = { personalIn: 0, personalOut: 0, commonShare: 0, commonExpenseShare: 0 };
+  }
+  saveState();
+  showError('members-error', '');
+  $('member-name').value = '';
+  renderMembers();
+  renderBank();
+}
+
+function fireMember(id) {
+  const idx = state.members.findIndex(m => m.id === id);
+  if (idx === -1) return;
+  const m = state.members[idx];
+  const account = state.accounts[m.name];
+  const balance = account ? getAccountBalance(m.name) : 0;
+
+  if (m.role === 'Игрок' && balance !== 0) {
+    const ok = confirm(`У сотрудника вклад в банке: ${formatMoney(balance)}. Выдать?`);
+    if (ok) {
+      // Списываем с банка, обнуляем счёт
+      if (account) {
+        account.personalIn -= balance; // корректировка, чтобы баланс стал 0
+      }
+    } else {
+      // Оставляем счёт как есть — он будет учтён в банке
+    }
+  }
+  state.members.splice(idx, 1);
+  saveState();
+  renderMembers();
+  renderBank();
+}
+
+/* ============================================================
+   БАНК
+   ============================================================ */
+
+// Баланс счёта игрока
+function getAccountBalance(name) {
+  const a = state.accounts[name];
+  if (!a) return 0;
+  return a.personalIn - a.personalOut + a.commonShare - a.commonExpenseShare;
+}
+
+// Сумма счетов всех игроков (включая уволенных, у кого есть счёт)
+function getTotalAccounts() {
+  let sum = 0;
+  for (const name in state.accounts) {
+    sum += getAccountBalance(name);
+  }
+  return sum;
+}
+
+// Банк = сумма счетов всех игроков (уволенные тоже входят)
+function getBankTotal() {
+  return getTotalAccounts();
+}
+
+function formatMoney(n) {
+  // Округление до 2 знаков, убираем .00
+  const rounded = Math.round(n * 100) / 100;
+  if (Number.isInteger(rounded)) return rounded + ' ЗМ';
+  return rounded.toFixed(2) + ' ЗМ';
+}
+
+function renderBank() {
+  const total = getBankTotal();
+  $('bank-total').textContent = formatMoney(total);
+  $('bank-sub').innerHTML =
+    `Общих доходов: <span>${formatMoney(state.totals.commonIncome)}</span> · ` +
+    `Общих трат: <span>${formatMoney(state.totals.commonExpense)}</span>`;
+
+  const players = getPlayers();
+  const container = $('bank-players');
+  if (!players.length) {
+    container.innerHTML = '<div class="empty">Нет игроков в составе</div>';
+    return;
+  }
+
+  const totalAccounts = getTotalAccounts();
+  container.innerHTML = '';
+  players.forEach(p => {
+    const acc = state.accounts[p.name] || { personalIn: 0, personalOut: 0, commonShare: 0, commonExpenseShare: 0 };
+    const balance = getAccountBalance(p.name);
+    const share = totalAccounts > 0 ? (balance / totalAccounts * 100) : 0;
+    const limit = Math.max(0, Math.min(balance, total));
+
+    const div = document.createElement('div');
+    div.className = 'bank-player';
+    div.innerHTML = `
+      <div class="bp-head">
+        <span class="bp-name">${escapeHtml(p.name)}</span>
+      </div>
+      <div class="bp-stats">
+        <span>Счёт: <b class="${balance < 0 ? 'neg' : ''}">${formatMoney(balance)}</b></span>
+        <span>Доля: <b>${share.toFixed(1)}%</b></span>
+        <span>Лимит: <b>${formatMoney(limit)}</b></span>
+      </div>
+      <div class="bp-controls">
+        <input type="number" min="0" step="1" placeholder="Сумма" data-amount="${escapeAttr(p.name)}">
+        <button class="small" data-deposit="${escapeAttr(p.name)}">Вложить</button>
+        <button class="small secondary" data-withdraw="${escapeAttr(p.name)}">Снять</button>
+      </div>
+    `;
+    container.appendChild(div);
+  });
+
+  // Обработчики
+  container.querySelectorAll('[data-deposit]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const name = btn.dataset.deposit;
+      const input = container.querySelector(`[data-amount="${cssEscape(name)}"]`);
+      const val = parseFloat(input.value);
+      if (isNaN(val) || val <= 0) { showError('bank-error', 'Введите сумму больше 0'); return; }
+      deposit(name, val);
+      input.value = '';
+    });
+  });
+  container.querySelectorAll('[data-withdraw]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const name = btn.dataset.withdraw;
+      const input = container.querySelector(`[data-amount="${cssEscape(name)}"]`);
+      const val = parseFloat(input.value);
+      if (isNaN(val) || val <= 0) { showError('bank-error', 'Введите сумму больше 0'); return; }
+      withdraw(name, val);
+      input.value = '';
+    });
+  });
+}
+
+function deposit(name, amount) {
+  showError('bank-error', '');
+  const acc = state.accounts[name];
+  if (!acc) { showError('bank-error', 'Счёт не найден'); return; }
+  acc.personalIn += amount;
+  saveState();
+  renderBank();
+}
+
+function withdraw(name, amount) {
+  showError('bank-error', '');
+  const acc = state.accounts[name];
+  if (!acc) { showError('bank-error', 'Счёт не найден'); return; }
+  const balance = getAccountBalance(name);
+  const bank = getBankTotal();
+  const limit = Math.max(0, Math.min(balance, bank));
+
+  if (amount > limit) {
+    if (amount > bank) {
+      showError('bank-error', 'В банке недостаточно средств');
+      return;
+    }
+    const ok = confirm(`Сумма превышает лимит (${formatMoney(limit)}). Согласовано с игроками?`);
+    if (!ok) return;
+  }
+
+  if (amount > bank) {
+    showError('bank-error', 'В банке недостаточно средств');
+    return;
+  }
+
+  acc.personalOut += amount;
+  saveState();
+  renderBank();
+}
+
+// Общий доход: делится поровну между всеми Игроками
+function commonIncome(amount) {
+  showError('bank-error', '');
+  const players = getPlayers();
+  if (!players.length) { showError('bank-error', 'Нет игроков'); return; }
+  if (amount <= 0) { showError('bank-error', 'Сумма должна быть > 0'); return; }
+  const per = amount / players.length;
+  players.forEach(p => {
+    if (!state.accounts[p.name]) {
+      state.accounts[p.name] = { personalIn: 0, personalOut: 0, commonShare: 0, commonExpenseShare: 0 };
+    }
+    state.accounts[p.name].commonShare += per;
+  });
+  state.totals.commonIncome += amount;
+  saveState();
+  renderBank();
+}
+
+// Общая трата: делится поровну между всеми Игроками
+function commonExpense(amount) {
+  showError('bank-error', '');
+  const players = getPlayers();
+  if (!players.length) { showError('bank-error', 'Нет игроков'); return; }
+  if (amount <= 0) { showError('bank-error', 'Сумма должна быть > 0'); return; }
+  const bank = getBankTotal();
+  if (amount > bank) { showError('bank-error', 'В банке недостаточно средств'); return; }
+  const per = amount / players.length;
+  players.forEach(p => {
+    if (!state.accounts[p.name]) {
+      state.accounts[p.name] = { personalIn: 0, personalOut: 0, commonShare: 0, commonExpenseShare: 0 };
+    }
+    state.accounts[p.name].commonExpenseShare += per;
+  });
+  state.totals.commonExpense += amount;
+  saveState();
+  renderBank();
+}
+
+/* ============================================================
+   ВСПОМОГАТЕЛЬНОЕ
+   ============================================================ */
+
+const $ = id => document.getElementById(id);
+
+function showError(id, msg) { $(id).textContent = msg || ''; }
+
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+function escapeAttr(s) {
+  return String(s).replace(/"/g, '&quot;');
+}
+function cssEscape(s) {
+  return String(s).replace(/["\\]/g, '\\$&');
+}
+
+/* ============================================================
+   МОДАЛЬНЫЕ ОКНА
+   ============================================================ */
+
+function openModal(name) {
+  const el = $('modal-' + name);
+  if (!el) return;
+  el.style.display = 'flex';
+  if (name === 'members') renderMembers();
+  if (name === 'bank') renderBank();
+  if (name === 'date') {
+    fillDateInputs();
+    updateDateDisplay();
+  }
+}
+
+function closeModal(el) {
+  el.style.display = 'none';
+}
+
+document.querySelectorAll('.main-menu button').forEach(btn => {
+  btn.addEventListener('click', () => openModal(btn.dataset.modal));
+});
+
+document.querySelectorAll('.modal-overlay').forEach(overlay => {
+  overlay.addEventListener('click', e => {
+    if (e.target === overlay) closeModal(overlay);
+  });
+  overlay.querySelectorAll('[data-close]').forEach(btn => {
+    btn.addEventListener('click', () => closeModal(overlay));
+  });
+});
+
+/* ============================================================
+   СОСТАВ — обработчики
+   ============================================================ */
+
+$('btn-add-member').addEventListener('click', () => {
+  addMember($('member-name').value, $('member-role').value);
+});
+
+$('member-name').addEventListener('keydown', e => {
+  if (e.key === 'Enter') $('btn-add-member').click();
+});
+
+/* ============================================================
+   ДАТА — обработчики
+   ============================================================ */
+
+function fillDateInputs() {
+  $('set-year').value = state.date.year;
+  $('set-month').value = state.date.month;
+  $('set-day').value = state.date.day;
+  const t = String(state.date.hours).padStart(2,'0') + ':' + String(state.date.minutes).padStart(2,'0');
+  $('set-time').value = t;
+}
+
+// Заполнение выпадающих списков
+(function initDateSelects() {
+  const monthSel = $('set-month');
+  MONTHS.forEach((m, i) => {
+    const opt = document.createElement('option');
+    opt.value = i + 1;
+    opt.textContent = m.charAt(0).toUpperCase() + m.slice(1);
+    monthSel.appendChild(opt);
+  });
+  const timeSel = $('set-time');
+  for (let h = 0; h < 24; h++) {
+    for (let m = 0; m < 60; m += 30) {
+      const val = String(h).padStart(2,'0') + ':' + String(m).padStart(2,'0');
+      const opt = document.createElement('option');
+      opt.value = val;
+      opt.textContent = val;
+      timeSel.appendChild(opt);
+    }
+  }
+})();
+
+$('btn-short-rest').addEventListener('click', () => {
+  state.date = addMinutes(state.date, 60);
+  saveState();
+  updateDateDisplay();
+  fillDateInputs();
+});
+
+$('btn-long-rest').addEventListener('click', () => {
+  state.date = addMinutes(state.date, 8 * 60);
+  saveState();
+  updateDateDisplay();
+  fillDateInputs();
+});
+
+$('btn-next-day').addEventListener('click', () => {
+  state.date = nextDayMorning(state.date);
+  saveState();
+  updateDateDisplay();
+  fillDateInputs();
+});
+
+$('btn-set-date').addEventListener('click', () => {
+  showError('date-error', '');
+  const year = parseInt($('set-year').value, 10);
+  const month = parseInt($('set-month').value, 10);
+  const day = parseInt($('set-day').value, 10);
+  const time = $('set-time').value;
+  const [hh, mm] = time.split(':').map(Number);
+
+  if (!Number.isInteger(year) || year < 1) { showError('date-error', 'Год должен быть ≥ 1'); return; }
+  if (!Number.isInteger(month) || month < 1 || month > 12) { showError('date-error', 'Месяц от 1 до 12'); return; }
+  const maxDay = daysInMonth(month);
+  if (!Number.isInteger(day) || day < 1 || day > maxDay) {
+    showError('date-error', `В этом месяце ${maxDay} дней`);
+    return;
+  }
+  state.date = { year, month, day, hours: hh, minutes: mm };
+  saveState();
+  updateDateDisplay();
+  fillDateInputs();
+});
+
+/* ============================================================
+   БАНК — обработчики кнопок "Общий доход" / "Общая трата"
+   ============================================================ */
+
+$('btn-common-income').addEventListener('click', () => {
+  const val = parseFloat(prompt('Сумма общего дохода (ЗМ):'));
+  if (isNaN(val) || val <= 0) return;
+  commonIncome(val);
+});
+
+$('btn-common-expense').addEventListener('click', () => {
+  const val = parseFloat(prompt('Сумма общей траты (ЗМ):'));
+  if (isNaN(val) || val <= 0) return;
+  commonExpense(val);
+});
+
+/* ============================================================
+   ИНИЦИАЛИЗАЦИЯ
+   ============================================================ */
+
+updateDateDisplay();
+renderMembers();
+renderBank();
+</script>
+</body>
+</html>
