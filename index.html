@@ -173,6 +173,8 @@
   button.danger:hover { background: #d04050; }
   button.success-btn { background: #2f8f4e; }
   button.success-btn:hover { background: #3aa860; }
+  button.warn { background: #b06a20; }
+  button.warn:hover { background: #d08030; }
 
   .error {
     color: var(--error);
@@ -277,11 +279,10 @@
   .bank-player .bp-stats span b { color: var(--text); font-weight: 600; }
 
   /* Цвета счёта */
-  .bp-stats .balance-positive b { color: var(--success); }
-  .bp-stats .balance-zero b { color: var(--text); }
-  .bp-stats .balance-negative,
-  .bp-stats .balance-negative span,
-  .bp-stats .balance-negative b { color: var(--error) !important; }
+  .bp-stats.balance-positive span b { color: var(--success); }
+  .bp-stats.balance-zero span b { color: var(--text); }
+  .bp-stats.balance-negative span,
+  .bp-stats.balance-negative span b { color: var(--error) !important; }
 
   .bank-player .bp-controls {
     display: flex;
@@ -309,6 +310,36 @@
 
   .empty { color: var(--text-dim); font-style: italic; padding: 12px; text-align: center; }
   .section-title { font-size: 0.9rem; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.5px; margin: 18px 0 8px; }
+
+  .history-item {
+    padding: 8px 0;
+    border-bottom: 1px solid var(--border);
+    font-size: 0.88rem;
+  }
+  .history-item .hist-date { color: var(--text-dim); }
+
+  /* ---------- КАСТОМНЫЕ ДИАЛОГИ ---------- */
+  .dialog-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.7);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 16px;
+    z-index: 300;
+  }
+  .dialog {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 24px;
+    width: 100%;
+    max-width: 420px;
+    animation: fadeIn 0.15s ease;
+  }
+  .dialog p { margin-bottom: 20px; font-size: 0.98rem; line-height: 1.5; }
+  .dialog .dialog-actions { display: flex; gap: 10px; justify-content: flex-end; flex-wrap: wrap; }
 
   @media (max-width: 480px) {
     .modal { padding: 18px; }
@@ -354,7 +385,6 @@
     </div>
     <button id="btn-add-member">Добавить</button>
     <div class="error" id="members-error"></div>
-
     <div class="member-list" id="members-list"></div>
   </div>
 </div>
@@ -404,11 +434,55 @@
     <div class="bank-actions">
       <button id="btn-common-income" class="secondary">Общий доход</button>
       <button id="btn-common-expense" class="secondary">Общая трата</button>
+      <button id="btn-expenses" class="secondary">Расходы</button>
+      <button id="btn-history" class="secondary">История</button>
       <button id="btn-reset-bank" class="danger">Сбросить банк</button>
     </div>
     <div class="section-title">Вкладчики</div>
     <div id="bank-players"></div>
     <div class="error" id="bank-error"></div>
+  </div>
+</div>
+
+<!-- ИСТОРИЯ -->
+<div class="modal-overlay" id="modal-history" style="display:none;">
+  <div class="modal">
+    <button class="modal-close" data-close>×</button>
+    <h2>История операций</h2>
+    <div id="history-list" style="max-height: 420px; overflow-y: auto;"></div>
+    <div class="error" id="history-error"></div>
+  </div>
+</div>
+
+<!-- РАСХОДЫ -->
+<div class="modal-overlay" id="modal-expenses" style="display:none;">
+  <div class="modal">
+    <button class="modal-close" data-close>×</button>
+    <h2>Регулярные расходы</h2>
+    <div class="row">
+      <div class="field" style="grid-column: span 2;">
+        <label for="expense-name">Направление</label>
+        <input type="text" id="expense-name" placeholder="Зарплата персоналу">
+      </div>
+      <div class="field">
+        <label for="expense-amount">Сумма</label>
+        <input type="number" id="expense-amount" min="0" step="0.1">
+      </div>
+      <div class="field">
+        <label for="expense-period">Периодичность</label>
+        <select id="expense-period">
+          <option value="daily">1 раз в сутки</option>
+          <option value="monthly">1 раз в месяц</option>
+        </select>
+      </div>
+    </div>
+    <button id="btn-add-expense">Добавить</button>
+    <div class="error" id="expenses-error"></div>
+    <div class="section-title">Список расходов</div>
+    <div id="expenses-list"></div>
+    <div style="text-align: center; margin-top: 16px; font-size: 1.1rem;">
+      Итого в месяц: <b id="expenses-total" style="color: var(--gold);">0 ЗМ</b>
+    </div>
   </div>
 </div>
 
@@ -449,7 +523,9 @@ function defaultState() {
     date: { year: 1852, month: 11, day: 27, hours: 12, minutes: 30 },
     members: [],
     accounts: {},
-    totals: { commonIncome: 0, commonExpense: 0 }
+    totals: { commonIncome: 0, commonExpense: 0 },
+    history: [],
+    expenses: []
   };
 }
 
@@ -463,6 +539,8 @@ function loadState() {
     if (!s.date || !Array.isArray(s.members)) return defaultState();
     if (!s.accounts) s.accounts = {};
     if (!s.totals) s.totals = { commonIncome: 0, commonExpense: 0 };
+    if (!Array.isArray(s.history)) s.history = [];
+    if (!Array.isArray(s.expenses)) s.expenses = [];
     s.members.forEach(m => { if (typeof m.fired !== 'boolean') m.fired = false; });
     return s;
   } catch {
@@ -475,20 +553,12 @@ function saveState() {
 }
 
 /* ============================================================
-   ОКРУГЛЕНИЕ ДО ДЕСЯТЫХ
+   ОКРУГЛЕНИЕ
    ============================================================ */
 
-// Округление до десятых (вниз, остаток сжигается)
-function floorTenths(x) {
-  return Math.floor(x * 10) / 10;
-}
+function floorTenths(x) { return Math.floor(x * 10) / 10; }
+function roundTenths(x) { return Math.round(x * 10) / 10; }
 
-// Округление до десятых (обычное, для отображения)
-function roundTenths(x) {
-  return Math.round(x * 10) / 10;
-}
-
-// Форматирование денег: до десятых, без .0
 function formatMoney(n) {
   const r = roundTenths(n);
   if (Number.isInteger(r)) return r + ' ЗМ';
@@ -552,6 +622,92 @@ function updateDateDisplay() {
 }
 
 /* ============================================================
+   КАСТОМНЫЕ ДИАЛОГИ
+   ============================================================ */
+
+// Аналог confirm() — возвращает Promise<boolean>
+function showConfirm(message, okText = 'Да', cancelText = 'Отмена') {
+  return new Promise(resolve => {
+    const overlay = document.createElement('div');
+    overlay.className = 'dialog-overlay';
+    overlay.innerHTML = `
+      <div class="dialog">
+        <p>${escapeHtml(message)}</p>
+        <div class="dialog-actions">
+          <button class="secondary" data-cancel>${cancelText}</button>
+          <button data-ok>${okText}</button>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(overlay);
+    overlay.querySelector('[data-ok]').addEventListener('click', () => {
+      overlay.remove(); resolve(true);
+    });
+    overlay.querySelector('[data-cancel]').addEventListener('click', () => {
+      overlay.remove(); resolve(false);
+    });
+    overlay.addEventListener('click', e => {
+      if (e.target === overlay) { overlay.remove(); resolve(false); }
+    });
+  });
+}
+
+// Аналог prompt() — возвращает Promise<string|null>
+function showPrompt(message, defaultValue = '') {
+  return new Promise(resolve => {
+    const overlay = document.createElement('div');
+    overlay.className = 'dialog-overlay';
+    overlay.innerHTML = `
+      <div class="dialog">
+        <p>${escapeHtml(message)}</p>
+        <input type="text" id="dialog-input" value="${escapeAttr(defaultValue)}" style="margin-bottom: 16px;">
+        <div class="dialog-actions">
+          <button class="secondary" data-cancel>Отмена</button>
+          <button data-ok>OK</button>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(overlay);
+    const input = overlay.querySelector('#dialog-input');
+    input.focus();
+    input.select();
+    const close = val => { overlay.remove(); resolve(val); };
+    overlay.querySelector('[data-ok]').addEventListener('click', () => close(input.value));
+    overlay.querySelector('[data-cancel]').addEventListener('click', () => close(null));
+    input.addEventListener('keydown', e => {
+      if (e.key === 'Enter') close(input.value);
+      if (e.key === 'Escape') close(null);
+    });
+    overlay.addEventListener('click', e => {
+      if (e.target === overlay) close(null);
+    });
+  });
+}
+
+/* ============================================================
+   ИСТОРИЯ
+   ============================================================ */
+
+function logHistory(text) {
+  const d = state.date;
+  const dateStr = `${d.day} ${MONTHS[d.month - 1]}`;
+  state.history.unshift({ date: dateStr, text });
+  if (state.history.length > 300) state.history.pop();
+  saveState();
+}
+
+function renderHistory() {
+  const list = $('history-list');
+  if (!state.history.length) {
+    list.innerHTML = '<div class="empty">История пуста</div>';
+    return;
+  }
+  list.innerHTML = state.history.map(h =>
+    `<div class="history-item"><span class="hist-date">${escapeHtml(h.date)}.</span> ${escapeHtml(h.text)}</div>`
+  ).join('');
+}
+
+/* ============================================================
    СОСТАВ
    ============================================================ */
 
@@ -581,15 +737,19 @@ function renderMembers() {
   sorted.forEach(m => {
     const row = document.createElement('div');
     row.className = 'member-row' + (m.fired ? ' fired' : '');
-    const btn = m.fired
-      ? `<button class="success-btn small" data-hire="${m.id}">Нанять</button>`
-      : `<button class="danger small" data-fire="${m.id}">Уволить</button>`;
+    let btns = '';
+    if (m.fired) {
+      btns = `<button class="success-btn small" data-hire="${m.id}">Нанять</button>
+              <button class="danger small" data-delete="${m.id}">Удалить</button>`;
+    } else {
+      btns = `<button class="danger small" data-fire="${m.id}">Уволить</button>`;
+    }
     row.innerHTML = `
       <div>
         <span class="member-name">${escapeHtml(m.name)}</span>
         <span class="member-role ${ROLE_CLASS[m.role] || ''}">${m.role}</span>
       </div>
-      ${btn}
+      <div style="display:flex; gap:6px;">${btns}</div>
     `;
     list.appendChild(row);
   });
@@ -599,9 +759,12 @@ function renderMembers() {
   list.querySelectorAll('[data-hire]').forEach(btn => {
     btn.addEventListener('click', () => hireMember(btn.dataset.hire));
   });
+  list.querySelectorAll('[data-delete]').forEach(btn => {
+    btn.addEventListener('click', () => deleteMember(btn.dataset.delete));
+  });
 }
 
-function addMember(name, role) {
+async function addMember(name, role) {
   name = name.trim();
   if (!name) { showError('members-error', 'Введите имя'); return; }
   const existing = state.members.find(m => m.name.toLowerCase() === name.toLowerCase());
@@ -630,19 +793,21 @@ function addMember(name, role) {
   renderBank();
 }
 
-function fireMember(id) {
+async function fireMember(id) {
   const idx = state.members.findIndex(m => m.id === id);
   if (idx === -1) return;
   const m = state.members[idx];
   const account = state.accounts[m.name];
   const balance = account ? getAccountBalance(m.name) : 0;
 
-  if (!confirm(`Уволить сотрудника «${m.name}»?`)) return;
+  const ok = await showConfirm(`Уволить сотрудника «${m.name}»?`);
+  if (!ok) return;
 
   if (m.role === 'Игрок' && balance !== 0) {
-    const give = confirm(`У сотрудника вклад в банке: ${formatMoney(balance)}. Выдать?`);
+    const give = await showConfirm(`У сотрудника вклад в банке: ${formatMoney(balance)}. Выдать?`);
     if (give && account) {
       account.personalIn -= balance;
+      logHistory(`Игрок ${m.name} забрал вклад при увольнении: ${formatMoney(balance)}`);
     }
   }
 
@@ -656,6 +821,26 @@ function hireMember(id) {
   const m = state.members.find(x => x.id === id);
   if (!m) return;
   m.fired = false;
+  saveState();
+  renderMembers();
+  renderBank();
+}
+
+async function deleteMember(id) {
+  const m = state.members.find(x => x.id === id);
+  if (!m) return;
+  const ok = await showConfirm(`Удалить «${m.name}» навсегда? Это действие необратимо.`, 'Удалить', 'Отмена');
+  if (!ok) return;
+  // Если у него остались деньги в банке — предупредим
+  const acc = state.accounts[m.name];
+  const balance = acc ? getAccountBalance(m.name) : 0;
+  if (balance !== 0) {
+    const ok2 = await showConfirm(`У него остался счёт в банке: ${formatMoney(balance)}. Счёт будет обнулён. Продолжить?`, 'Продолжить', 'Отмена');
+    if (!ok2) return;
+    // Обнуляем счёт
+    state.accounts[m.name] = { personalIn: 0, personalOut: 0, commonShare: 0, commonExpenseShare: 0 };
+  }
+  state.members = state.members.filter(x => x.id !== id);
   saveState();
   renderMembers();
   renderBank();
@@ -722,7 +907,6 @@ function renderBank() {
     const share = (balance > 0 && positiveTotal > 0) ? (balance / positiveTotal * 100) : 0;
     const limit = Math.max(0, Math.min(balance, total));
 
-    // Класс и текст для счёта
     let balanceClass, balanceLabel;
     if (balance > 0) { balanceClass = 'balance-positive'; balanceLabel = 'Счёт'; }
     else if (balance < 0) { balanceClass = 'balance-negative'; balanceLabel = 'Долг'; }
@@ -779,11 +963,12 @@ function deposit(name, amount) {
   const acc = state.accounts[name];
   if (!acc) { showError('bank-error', 'Счёт не найден'); return; }
   acc.personalIn += amount;
+  logHistory(`Игрок ${name} сделал личный вклад ${formatMoney(amount)}`);
   saveState();
   renderBank();
 }
 
-function withdraw(name, amount) {
+async function withdraw(name, amount) {
   showError('bank-error', '');
   const acc = state.accounts[name];
   if (!acc) { showError('bank-error', 'Счёт не найден'); return; }
@@ -794,16 +979,16 @@ function withdraw(name, amount) {
   if (amount > bank) { showError('bank-error', 'В банке недостаточно средств'); return; }
 
   if (amount > limit) {
-    const ok = confirm(`Сумма превышает лимит (${formatMoney(limit)}). Согласовано с игроками?`);
+    const ok = await showConfirm(`Сумма превышает лимит (${formatMoney(limit)}). Согласовано с игроками?`);
     if (!ok) return;
   }
 
   acc.personalOut += amount;
+  logHistory(`Игрок ${name} снял ${formatMoney(amount)}`);
   saveState();
   renderBank();
 }
 
-// Общий доход: делится поровну, с округлением вниз до десятых (остаток сжигается)
 function commonIncome(amount) {
   showError('bank-error', '');
   const players = getPlayers();
@@ -816,12 +1001,13 @@ function commonIncome(amount) {
     }
     state.accounts[p.name].commonShare += per;
   });
-  state.totals.commonIncome += per * players.length; // учитываем только распределённое
+  const distributed = per * players.length;
+  state.totals.commonIncome += distributed;
+  logHistory(`Гильдия пополнила счёт на ${formatMoney(distributed)}`);
   saveState();
   renderBank();
 }
 
-// Общая трата: делится поровну, с округлением вниз до десятых
 function commonExpense(amount) {
   showError('bank-error', '');
   const players = getPlayers();
@@ -836,14 +1022,16 @@ function commonExpense(amount) {
     }
     state.accounts[p.name].commonExpenseShare += per;
   });
-  state.totals.commonExpense += per * players.length;
+  const distributed = per * players.length;
+  state.totals.commonExpense += distributed;
+  logHistory(`Гильдия потратила со счёта ${formatMoney(distributed)}`);
   saveState();
   renderBank();
 }
 
-// Сброс банка (для тестов)
-function resetBank() {
-  if (!confirm('Сбросить банк? Все счета, долги и общие суммы обнулятся. Состав гильдии останется.')) return;
+async function resetBank() {
+  const ok = await showConfirm('Сбросить банк? Все счета, долги и общие суммы обнулятся. Состав гильдии останется.');
+  if (!ok) return;
   for (const name in state.accounts) {
     state.accounts[name] = { personalIn: 0, personalOut: 0, commonShare: 0, commonExpenseShare: 0 };
   }
@@ -852,6 +1040,55 @@ function resetBank() {
   renderBank();
   showError('bank-error', '');
 }
+
+/* ============================================================
+   РАСХОДЫ
+   ============================================================ */
+
+function renderExpenses() {
+  const list = $('expenses-list');
+  if (!state.expenses.length) {
+    list.innerHTML = '<div class="empty">Нет расходов</div>';
+    $('expenses-total').textContent = '0 ЗМ';
+    return;
+  }
+  let total = 0;
+  list.innerHTML = state.expenses.map((e, i) => {
+    const monthly = e.period === 'daily' ? e.amount * 30 : e.amount;
+    total += monthly;
+    return `<div class="member-row">
+      <div>
+        <span class="member-name">${escapeHtml(e.name)}</span>
+        <span style="font-size: 0.8rem; color: var(--text-dim); margin-left: 8px;">
+          ${formatMoney(e.amount)} ${e.period === 'daily' ? 'в сутки' : 'в месяц'}
+        </span>
+      </div>
+      <button class="danger small" data-del-expense="${i}">Удалить</button>
+    </div>`;
+  }).join('');
+  $('expenses-total').textContent = formatMoney(total);
+  list.querySelectorAll('[data-del-expense]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      state.expenses.splice(parseInt(btn.dataset.delExpense, 10), 1);
+      saveState();
+      renderExpenses();
+    });
+  });
+}
+
+$('btn-add-expense').addEventListener('click', () => {
+  showError('expenses-error', '');
+  const name = $('expense-name').value.trim();
+  const amount = parseFloat($('expense-amount').value);
+  const period = $('expense-period').value;
+  if (!name) { showError('expenses-error', 'Введите направление'); return; }
+  if (isNaN(amount) || amount <= 0) { showError('expenses-error', 'Сумма должна быть > 0'); return; }
+  state.expenses.push({ name, amount, period });
+  saveState();
+  $('expense-name').value = '';
+  $('expense-amount').value = '';
+  renderExpenses();
+});
 
 /* ============================================================
    ВСПОМОГАТЕЛЬНОЕ
@@ -876,6 +1113,8 @@ function openModal(name) {
   if (name === 'members') renderMembers();
   if (name === 'bank') renderBank();
   if (name === 'date') { fillDateInputs(); updateDateDisplay(); }
+  if (name === 'history') renderHistory();
+  if (name === 'expenses') renderExpenses();
 }
 
 function closeModal(el) { el.style.display = 'none'; }
@@ -972,21 +1211,27 @@ $('btn-set-date').addEventListener('click', () => {
 });
 
 /* ============================================================
-   БАНК — обработчики общих операций и сброса
+   БАНК — обработчики
    ============================================================ */
 
-$('btn-common-income').addEventListener('click', () => {
-  const val = parseFloat(prompt('Сумма общего дохода (ЗМ):'));
-  if (isNaN(val) || val <= 0) return;
-  commonIncome(val);
+$('btn-common-income').addEventListener('click', async () => {
+  const val = await showPrompt('Сумма общего дохода (ЗМ):');
+  if (val === null) return;
+  const num = parseFloat(val);
+  if (isNaN(num) || num <= 0) return;
+  commonIncome(num);
 });
 
-$('btn-common-expense').addEventListener('click', () => {
-  const val = parseFloat(prompt('Сумма общей траты (ЗМ):'));
-  if (isNaN(val) || val <= 0) return;
-  commonExpense(val);
+$('btn-common-expense').addEventListener('click', async () => {
+  const val = await showPrompt('Сумма общей траты (ЗМ):');
+  if (val === null) return;
+  const num = parseFloat(val);
+  if (isNaN(num) || num <= 0) return;
+  commonExpense(num);
 });
 
+$('btn-history').addEventListener('click', () => openModal('history'));
+$('btn-expenses').addEventListener('click', () => openModal('expenses'));
 $('btn-reset-bank').addEventListener('click', resetBank);
 
 /* ============================================================
