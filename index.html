@@ -552,11 +552,12 @@ function defaultState() {
     date: { year: 1852, month: 11, day: 27, hours: 12, minutes: 30 },
     members: [],
     accounts: {},
-    orphanFunds: 0,            // средства без вкладчика (после «Убрать»)
+    orphanFunds: 0,
     totals: { commonIncome: 0, commonExpense: 0 },
     history: [],
     expenses: [],
-    expensesPaidUntil: null    // { year, month } — до какого месяца оплачено включительно
+    expensesLastPaidMonth: null,   // { year, month } — последний оплаченный месяц
+    expensesLastPaidAmount: 0      // сколько было оплачено в последний раз (полная месячная сумма на тот момент)
   };
 }
 
@@ -573,7 +574,8 @@ function loadState() {
     if (!s.totals) s.totals = { commonIncome: 0, commonExpense: 0 };
     if (!Array.isArray(s.history)) s.history = [];
     if (!Array.isArray(s.expenses)) s.expenses = [];
-    if (!s.expensesPaidUntil) s.expensesPaidUntil = null;
+    if (!s.expensesLastPaidMonth) s.expensesLastPaidMonth = null;
+    if (typeof s.expensesLastPaidAmount !== 'number') s.expensesLastPaidAmount = 0;
     s.members.forEach(m => { if (typeof m.fired !== 'boolean') m.fired = false; });
     return s;
   } catch {
@@ -1010,7 +1012,6 @@ function renderBank() {
     btn.addEventListener('click', () => {
       const name = btn.dataset.removeAccount;
       const balance = getAccountBalance(name);
-      // Деньги не исчезают — переходят в «средства без вкладчика»
       if (balance !== 0) {
         state.orphanFunds = (state.orphanFunds || 0) + balance;
         logHistory(`Вклад игрока ${name} (${formatMoney(balance)}) перешёл в средства без вкладчика`);
@@ -1094,7 +1095,8 @@ async function resetBank() {
   getPlayers().forEach(p => ensureAccount(p.name));
   state.totals = { commonIncome: 0, commonExpense: 0 };
   state.history = [];
-  state.expensesPaidUntil = null;
+  state.expensesLastPaidMonth = null;
+  state.expensesLastPaidAmount = 0;
   saveState();
   renderBank();
   showError('bank-error', '');
@@ -1112,12 +1114,20 @@ function getMonthlyExpensesTotal() {
   return total;
 }
 
-// Проверка: оплачен ли текущий месяц
-function isCurrentMonthPaid() {
-  if (!state.expensesPaidUntil) return false;
+// Сколько месяцев не оплачено (включая текущий, если не оплачен)
+function getUnpaidMonths() {
   const d = state.date;
-  const p = state.expensesPaidUntil;
-  return (p.year > d.year) || (p.year === d.year && p.month >= d.month);
+  const p = state.expensesLastPaidMonth;
+  if (!p) return 1; // никогда не платили — считаем 1 месяц (текущий)
+  // Разница в месяцах между текущим и последним оплаченным
+  const diff = (d.year - p.year) * 12 + (d.month - p.month);
+  return Math.max(0, diff); // 0 — текущий оплачен
+}
+
+// Сколько дней до 1-го числа следующего месяца
+function daysUntilNextMonth() {
+  const d = state.date;
+  return daysInMonth(d.month) - d.day + 1;
 }
 
 function renderExpenseInfo() {
@@ -1130,15 +1140,27 @@ function renderExpenseInfo() {
   }
   info.style.display = 'block';
 
-  if (isCurrentMonthPaid()) {
-    const p = state.expensesPaidUntil;
-    info.className = 'bank-expense-info paid';
-    info.innerHTML = `Расходы оплачены до <b>${MONTHS[p.month - 1]} ${p.year}</b>`;
+  const unpaid = getUnpaidMonths();
+  const daysLeft = daysUntilNextMonth();
+
+  if (unpaid === 0) {
+    // Текущий месяц оплачен. Проверим, не добавили ли новые расходы
+    const remainder = total - (state.expensesLastPaidAmount || 0);
+    if (remainder > 0.001) {
+      info.className = 'bank-expense-info';
+      info.innerHTML = `Необходимо внести <b>${formatMoney(remainder)}</b> на расходы Гильдии в течение <b>${daysLeft}</b> дн.`;
+    } else {
+      const d = state.date;
+      let m = d.month + 1, y = d.year;
+      if (m > 12) { m = 1; y += 1; }
+      info.className = 'bank-expense-info paid';
+      info.innerHTML = `Расходы оплачены до 1 <b>${MONTHS[m - 1]}</b>`;
+    }
   } else {
-    const d = state.date;
-    const daysLeft = daysInMonth(d.month) - d.day + 1;
+    // Есть неоплаченные месяцы — сумма долга = total × unpaid
+    const debt = total * unpaid;
     info.className = 'bank-expense-info';
-    info.innerHTML = `Необходимо внести <b>${formatMoney(total)}</b> на расходы Гильдии в течение <b>${daysLeft}</b> дн.`;
+    info.innerHTML = `Необходимо внести <b>${formatMoney(debt)}</b> на расходы Гильдии в течение <b>${daysLeft}</b> дн.`;
   }
 }
 
@@ -1194,11 +1216,22 @@ async function payExpenses() {
   showError('pay-error', '');
   const total = getMonthlyExpensesTotal();
   if (total <= 0) { showError('pay-error', 'Нет расходов для оплаты'); return; }
-  const bank = getBankTotal();
-  if (total > bank) { showError('pay-error', 'В банке недостаточно средств'); return; }
 
-  // Сначала снимаем с «средств без вкладчика», если есть
-  let remaining = total;
+  const unpaid = getUnpaidMonths();
+  let amountToPay;
+  if (unpaid === 0) {
+    // Текущий месяц оплачен — доплата за новые строки
+    amountToPay = total - (state.expensesLastPaidAmount || 0);
+    if (amountToPay <= 0.001) { showError('pay-error', 'Все расходы уже оплачены'); return; }
+  } else {
+    amountToPay = total * unpaid;
+  }
+
+  const bank = getBankTotal();
+  if (amountToPay > bank) { showError('pay-error', 'В банке недостаточно средств'); return; }
+
+  // Сначала списываем с «средств без вкладчика»
+  let remaining = amountToPay;
   if (state.orphanFunds > 0) {
     const take = Math.min(state.orphanFunds, remaining);
     state.orphanFunds -= take;
@@ -1214,24 +1247,20 @@ async function payExpenses() {
     });
     state.totals.commonExpense += per * players.length;
   } else {
-    state.totals.commonExpense += total;
+    state.totals.commonExpense += amountToPay;
   }
 
-  // Сдвигаем дату оплаты
-  const d = state.date;
-  if (!state.expensesPaidUntil) {
-    // Первая оплата — за следующий месяц
-    let m = d.month + 1, y = d.year;
-    if (m > 12) { m = 1; y += 1; }
-    state.expensesPaidUntil = { year: y, month: m };
+  // Обновляем состояние оплаты
+  if (unpaid === 0) {
+    // Доплата — просто обновляем сумму
+    state.expensesLastPaidAmount = total;
   } else {
-    // Следующий месяц после уже оплаченного
-    let m = state.expensesPaidUntil.month + 1, y = state.expensesPaidUntil.year;
-    if (m > 12) { m = 1; y += 1; }
-    state.expensesPaidUntil = { year: y, month: m };
+    // Оплатили все долги — фиксируем текущий месяц как оплаченный
+    state.expensesLastPaidMonth = { year: state.date.year, month: state.date.month };
+    state.expensesLastPaidAmount = total;
   }
 
-  logHistory(`Гильдия оплатила расходы: ${formatMoney(total)}`);
+  logHistory(`Гильдия оплатила расходы: ${formatMoney(amountToPay)}`);
   saveState();
   renderBank();
   renderExpenses();
