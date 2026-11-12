@@ -1,19 +1,15 @@
 /* ============================================================
    CORE.JS — Фундамент Мирталиса
-   Состояние, хранилище, утилиты, экранирование
    ============================================================ */
 
 const STORAGE_KEY = 'mirtalis_state_v1';
 
-// ---------- УТИЛИТЫ ДЛЯ DOM ----------
 export const $ = id => document.getElementById(id);
 
-// ---------- ОКРУГЛЕНИЕ ----------
 export function floorTenths(x) { return Math.floor(x * 10) / 10; }
 export function ceilTenths(x) { return Math.ceil(x * 10) / 10; }
 export function roundTenths(x) { return Math.round(x * 10) / 10; }
 
-// ---------- ФОРМАТИРОВАНИЕ ----------
 export function formatMoney(n) {
   const r = roundTenths(n);
   if (Number.isInteger(r)) return r + ' ЗМ';
@@ -26,7 +22,6 @@ export function formatQty(n) {
   return r.toFixed(1);
 }
 
-// ---------- ЭКРАНИРОВАНИЕ ----------
 export function escapeHtml(s) {
   return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
@@ -39,7 +34,6 @@ export function cssEscape(s) {
   return String(s).replace(/["\\]/g, '\\$&');
 }
 
-// ---------- СОСТОЯНИЕ ----------
 function defaultState() {
   return {
     date: { year: 2926, month: 2, day: 19, hours: 12, minutes: 0 },
@@ -76,13 +70,14 @@ export function loadState() {
       if (!m.type) m.type = 'Игрок';
       if (!m.rank) m.rank = '';
       if (!m.position) m.position = '';
-      if (!m.status) m.status = '';
-      if (!m.statusDate) m.statusDate = null;
       if (!m.info) m.info = '';
       if (!m.expanded) m.expanded = false;
       if (!Array.isArray(m.classes)) m.classes = [];
       if (typeof m.level !== 'number') m.level = 1;
       if (!m.species) m.species = '';
+      // Убираем устаревшие поля статуса
+      delete m.status;
+      delete m.statusDate;
     });
     return s;
   } catch {
@@ -94,14 +89,12 @@ export function saveState(state) {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
 }
 
-// ---------- ГЛОБАЛЬНОЕ СОСТОЯНИЕ ----------
 export let state = loadState();
 
 export function persist() {
   saveState(state);
 }
 
-// ---------- ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ДЛЯ АККАУНТОВ ----------
 export function ensureAccount(name) {
   if (!state.accounts[name]) {
     state.accounts[name] = { personalIn: 0, personalOut: 0, commonShare: 0, commonExpenseShare: 0 };
@@ -109,7 +102,6 @@ export function ensureAccount(name) {
   return state.accounts[name];
 }
 
-// ---------- КОНСТАНТЫ ----------
 export const MONTHS = ['января','февраля','марта','апреля','мая','июня',
                        'июля','августа','сентября','октября','ноября','декабря'];
 export const WEEKDAYS = ['Воскресенье','Понедельник','Вторник','Среда',
