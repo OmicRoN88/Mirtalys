@@ -1,4 +1,571 @@
 /* ============================================================
+   STYLE.CSS — Стили Мирталиса
+   ============================================================ */
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg: #12121a;
+  --panel: #1c1c28;
+  --panel-2: #242434;
+  --border: #2e2e42;
+  --text: #e4e4ef;
+  --text-dim: #8a8aa0;
+  --accent: #7c5cff;
+  --accent-hover: #9078ff;
+  --error: #ff5c6c;
+  --success: #4ade80;
+  --warning: #ffb86b;
+  --gold: #ffd166;
+  --fired: #55556a;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  min-height: 100vh;
+  line-height: 1.4;
+}
+
+/* ============================================================
+   ШАПКА
+   ============================================================ */
+
+.topbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 20px;
+  background: var(--panel);
+  border-bottom: 1px solid var(--border);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.topbar .campaign-start {
+  font-size: 0.85rem;
+  color: var(--text-dim);
+  letter-spacing: 0.3px;
+}
+.topbar .campaign-start strong { color: var(--gold); font-weight: 600; }
+.topbar .date-line {
+  font-size: 0.9rem;
+  color: var(--text-dim);
+  letter-spacing: 0.3px;
+  text-align: right;
+}
+.topbar .date-line strong { color: var(--text); font-weight: 600; }
+
+/* ============================================================
+   ГЛАВНОЕ МЕНЮ
+   ============================================================ */
+
+.main-menu {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: center;
+  padding: 24px 16px;
+  max-width: 900px;
+  margin: 0 auto;
+}
+.main-menu button {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  color: var(--text);
+  border-radius: 12px;
+  padding: 18px 24px;
+  font-size: 1rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  min-width: 120px;
+}
+.main-menu button:hover {
+  background: var(--panel-2);
+  border-color: var(--accent);
+  transform: translateY(-2px);
+}
+
+/* ============================================================
+   МОДАЛЬНЫЕ ОКНА
+   ============================================================ */
+
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.65);
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  padding: 40px 16px;
+  overflow-y: auto;
+  z-index: 200;
+}
+.modal {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 24px;
+  width: 100%;
+  max-width: 720px;
+  position: relative;
+  animation: fadeIn 0.15s ease;
+}
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(-8px); }
+  to { opacity: 1; transform: none; }
+}
+
+.modal h2 {
+  font-size: 1.2rem;
+  color: var(--accent);
+  margin-bottom: 18px;
+}
+.modal-close {
+  position: absolute;
+  top: 12px;
+  right: 14px;
+  background: transparent;
+  border: none;
+  color: var(--text-dim);
+  font-size: 1.4rem;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 6px;
+}
+.modal-close:hover { color: var(--text); background: var(--panel-2); }
+
+/* ============================================================
+   ФОРМЫ
+   ============================================================ */
+
+.row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 10px;
+  margin-bottom: 12px;
+}
+.field { display: flex; flex-direction: column; gap: 5px; }
+.field label {
+  font-size: 0.75rem;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+}
+
+input, select, textarea {
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text);
+  padding: 9px 11px;
+  font-size: 0.95rem;
+  font-family: inherit;
+  outline: none;
+  width: 100%;
+  transition: border-color 0.2s;
+}
+textarea { resize: vertical; min-height: 60px; }
+input:focus, select:focus, textarea:focus { border-color: var(--accent); }
+input[type=number] { -moz-appearance: textfield; }
+input::-webkit-outer-spin-button,
+input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+
+/* Классы: select + кнопка +/- */
+.class-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.class-row select { flex: 1; }
+.class-toggle {
+  min-width: 38px;
+  padding: 9px 12px;
+  font-size: 1rem;
+  line-height: 1;
+}
+.class-second.hidden { display: none; }
+
+/* ============================================================
+   КНОПКИ
+   ============================================================ */
+
+button {
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  padding: 10px 18px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background 0.2s, transform 0.1s;
+}
+button:hover { background: var(--accent-hover); }
+button:active { transform: scale(0.98); }
+button.secondary {
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  color: var(--text);
+}
+button.secondary:hover { background: #2e2e44; }
+button.small { padding: 6px 12px; font-size: 0.8rem; }
+button.danger { background: #b03040; }
+button.danger:hover { background: #d04050; }
+button.success-btn { background: #2f8f4e; }
+button.success-btn:hover { background: #3aa860; }
+button.warn { background: #b06a20; }
+button.warn:hover { background: #d08030; }
+
+/* ============================================================
+   ОШИБКИ И ПОДСКАЗКИ
+   ============================================================ */
+
+.error {
+  color: var(--error);
+  font-size: 0.82rem;
+  min-height: 1.1em;
+  margin-top: 4px;
+}
+.hint { font-size: 0.75rem; color: var(--text-dim); margin-top: 3px; }
+.empty { color: var(--text-dim); font-style: italic; padding: 12px; text-align: center; }
+.section-title {
+  font-size: 0.9rem;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin: 18px 0 8px;
+}
+
+/* ============================================================
+   СОСТАВ
+   ============================================================ */
+
+.member-list { margin-top: 18px; display: flex; flex-direction: column; gap: 8px; }
+.member-card {
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+}
+.member-card.fired { background: #1a1a22; border-color: #2a2a38; opacity: 0.7; }
+.member-card.fired .mc-name { color: var(--fired); text-decoration: line-through; }
+
+.mc-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 14px;
+  cursor: pointer;
+  gap: 10px;
+  flex-wrap: wrap;
+  user-select: none;
+}
+.mc-head:hover { background: rgba(124,92,255,0.05); }
+.mc-name { font-weight: 600; }
+.mc-role {
+  font-size: 0.75rem;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: rgba(124,92,255,0.15);
+  color: var(--accent);
+  margin-left: 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+.mc-role.player { background: rgba(74,222,128,0.15); color: var(--success); }
+.mc-role.npc { background: rgba(255,184,107,0.15); color: var(--warning); }
+.mc-titles {
+  font-size: 0.8rem;
+  color: var(--text-dim);
+  margin-top: 2px;
+}
+.mc-titles span { margin-right: 10px; }
+.mc-arrow { color: var(--text-dim); font-size: 0.8rem; }
+
+.mc-body {
+  padding: 0 14px 14px;
+  border-top: 1px solid var(--border);
+  display: none;
+}
+.mc-body.open { display: block; }
+.mc-body .row { margin-top: 10px; }
+.mc-body textarea { min-height: 80px; }
+
+/* ============================================================
+   БАНК
+   ============================================================ */
+
+.bank-total {
+  text-align: center;
+  font-size: 2.4rem;
+  font-weight: 700;
+  color: var(--gold);
+  margin: 10px 0 4px;
+}
+.bank-sub {
+  text-align: center;
+  font-size: 0.85rem;
+  color: var(--text-dim);
+  margin-bottom: 8px;
+}
+.bank-sub span { color: var(--text); font-weight: 600; }
+
+.bank-expense-info {
+  text-align: center;
+  font-size: 0.85rem;
+  margin-bottom: 16px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  background: rgba(255,184,107,0.08);
+  border: 1px solid rgba(255,184,107,0.25);
+  color: var(--warning);
+}
+.bank-expense-info.paid {
+  background: rgba(74,222,128,0.08);
+  border-color: rgba(74,222,128,0.25);
+  color: var(--success);
+}
+.bank-expense-info b { color: var(--text); }
+
+.bank-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 16px;
+  justify-content: center;
+}
+
+.bank-player {
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 12px 14px;
+  margin-bottom: 10px;
+}
+.bank-player.fired {
+  background: #1a1a22;
+  border-color: #2a2a38;
+  opacity: 0.75;
+}
+.bank-player.fired .bp-name { color: var(--fired); text-decoration: line-through; }
+
+.bank-player .bp-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.bank-player .bp-name { font-weight: 600; }
+
+.bank-player .bp-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  font-size: 0.82rem;
+  color: var(--text-dim);
+  margin-bottom: 8px;
+}
+.bank-player .bp-stats span b { color: var(--text); font-weight: 600; }
+
+.bp-stats.balance-positive span b { color: var(--success); }
+.bp-stats.balance-zero span b { color: var(--text); }
+.bp-stats.balance-negative span,
+.bp-stats.balance-negative span b { color: var(--error) !important; }
+
+.bank-player .bp-controls {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.bank-player .bp-controls input { width: 110px; }
+
+/* ============================================================
+   ДАТА
+   ============================================================ */
+
+.date-display-big {
+  text-align: center;
+  font-size: 1.3rem;
+  font-weight: 600;
+  margin-bottom: 18px;
+  color: var(--text);
+}
+.date-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: center;
+  margin-bottom: 18px;
+}
+.date-actions button { min-width: 150px; }
+
+/* ============================================================
+   ИСТОРИЯ
+   ============================================================ */
+
+.history-item {
+  padding: 8px 0;
+  border-bottom: 1px solid var(--border);
+  font-size: 0.88rem;
+}
+.history-item .hist-date { color: var(--text-dim); }
+
+/* ============================================================
+   РАСХОДЫ
+   ============================================================ */
+
+.member-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 10px 14px;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.member-row .member-name { font-weight: 600; }
+
+.expense-total-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 16px;
+  font-size: 1.05rem;
+}
+.expense-total-row b { color: var(--gold); }
+
+.actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+/* ============================================================
+   СКЛАД
+   ============================================================ */
+
+.wh-filter {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+}
+.wh-filter label { font-size: 0.8rem; color: var(--text-dim); }
+.wh-filter select { width: auto; min-width: 160px; }
+
+.wh-category-title {
+  font-size: 0.85rem;
+  color: var(--accent);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin: 16px 0 8px;
+  padding-bottom: 4px;
+  border-bottom: 1px solid var(--border);
+}
+
+.wh-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 10px 14px;
+  margin-bottom: 8px;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.wh-item .wh-name { font-weight: 600; }
+.wh-item .wh-qty { color: var(--gold); font-weight: 600; margin-left: 8px; }
+.wh-item .wh-controls {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.wh-item .wh-controls input { width: 80px; }
+
+/* ============================================================
+   ТОРГОВЦЫ
+   ============================================================ */
+
+.trader-filters {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+}
+.trader-filters .field { flex: 1; min-width: 140px; }
+
+.trader-city-title {
+  font-size: 0.85rem;
+  color: var(--gold);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin: 18px 0 8px;
+  padding-bottom: 4px;
+  border-bottom: 1px solid var(--border);
+}
+
+.trader-card {
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 12px 14px;
+  margin-bottom: 8px;
+}
+.trader-card .tc-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+.trader-card .tc-name { font-weight: 600; }
+.trader-card .tc-category {
+  font-size: 0.75rem;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: rgba(124,92,255,0.15);
+  color: var(--accent);
+  margin-left: 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+.trader-card .tc-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  font-size: 0.82rem;
+  color: var(--text-dim);
+  margin-bottom: 8px;
+}
+.trader-card .tc-stats span b { font-weight: 600; }
+.trader-card .tc-discount-positive b { color: var(--success); }
+.trader-card .tc-discount-negative b { color: var(--error); }
+.trader-card .tc-discount-zero b { color: var(--text); }
+.trader-card .tc-controls {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.trader-card .tc-controls input { width: 100px; }
+
+/* ============================================================
    МИССИИ
    ============================================================ */
 
@@ -56,4 +623,47 @@
   gap: 8px;
   margin-top: 12px;
   flex-wrap: wrap;
+}
+
+/* ============================================================
+   ДИАЛОГИ
+   ============================================================ */
+
+.dialog-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.7);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 16px;
+  z-index: 300;
+}
+.dialog {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 24px;
+  width: 100%;
+  max-width: 420px;
+  animation: fadeIn 0.15s ease;
+}
+.dialog p { margin-bottom: 20px; font-size: 0.98rem; line-height: 1.5; }
+.dialog .dialog-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+}
+
+/* ============================================================
+   АДАПТИВНОСТЬ
+   ============================================================ */
+
+@media (max-width: 480px) {
+  .modal { padding: 18px; }
+  .bank-total { font-size: 1.9rem; }
+  .main-menu button { padding: 14px 18px; min-width: 100px; font-size: 0.9rem; }
+  .topbar { flex-direction: column; align-items: flex-start; }
+  .topbar .date-line { text-align: left; }
 }
