@@ -1,16 +1,16 @@
 /* ============================================================
    SOSTAV.JS — Логика раздела «Состав»
-   Добавление, карточки, увольнение, восстановление, удаление
    ============================================================ */
 
 import {
   $, state, persist,
   escapeHtml, escapeAttr, cssEscape,
-  ensureAccount, formatMoney
+  ensureAccount, formatMoney,
+  MONTHS
 } from './core.js';
 
 import {
-  daysBetween, daysInMonth, MONTHS
+  daysBetween, daysInMonth
 } from './date.js';
 
 import { showConfirm } from './dialogi.js';
@@ -19,7 +19,6 @@ import { showConfirm } from './dialogi.js';
    ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ
    ============================================================ */
 
-// Список активных игроков (нужен для банка)
 export function getPlayers() {
   return state.members.filter(m => m.type === 'Игрок' && !m.fired);
 }
@@ -37,7 +36,6 @@ export function renderMembers() {
     return;
   }
 
-  // Сортировка: активные Игроки → активные НИПы → уволенные Игроки → уволенные НИПы
   const sorted = [...state.members].sort((a, b) => {
     const groupA = (a.fired ? 2 : 0) + (a.type === 'Игрок' ? 0 : 1);
     const groupB = (b.fired ? 2 : 0) + (b.type === 'Игрок' ? 0 : 1);
@@ -55,7 +53,6 @@ export function renderMembers() {
     if (m.rank) titles.push(`<span>Звание: ${escapeHtml(m.rank)}</span>`);
     if (m.position) titles.push(`<span>Профессия: ${escapeHtml(m.position)}</span>`);
 
-    // Статус
     let statusHtml = '';
     if (m.status && m.statusDate) {
       const diff = daysBetween(m.statusDate, state.date);
@@ -129,9 +126,6 @@ export function renderMembers() {
     list.appendChild(card);
   });
 
-  // ---------- Обработчики ----------
-
-  // Раскрытие/сворачивание карточки
   list.querySelectorAll('[data-toggle]').forEach(el => {
     el.addEventListener('click', (e) => {
       if (e.target.closest('button')) return;
@@ -143,7 +137,6 @@ export function renderMembers() {
     });
   });
 
-  // Сохранение полей
   list.querySelectorAll('[data-save]').forEach(btn => {
     btn.addEventListener('click', () => {
       const id = btn.dataset.save;
@@ -166,7 +159,6 @@ export function renderMembers() {
     });
   });
 
-  // Кнопки
   list.querySelectorAll('[data-fire]').forEach(btn => {
     btn.addEventListener('click', () => fireMember(btn.dataset.fire));
   });
@@ -195,7 +187,6 @@ export function addMember(name, type) {
   const existing = state.members.find(m => m.name.toLowerCase() === name.toLowerCase());
   if (existing) {
     if (existing.fired) {
-      // Возвращаем уволенного
       existing.fired = false;
       existing.type = type;
       persist();
@@ -229,7 +220,6 @@ export async function fireMember(id) {
   if (idx === -1) return;
   const m = state.members[idx];
 
-  // Баланс счёта (если есть)
   let balance = 0;
   if (state.accounts[m.name]) {
     const a = state.accounts[m.name];
@@ -253,7 +243,7 @@ export async function fireMember(id) {
 }
 
 /* ============================================================
-   ВОССТАНОВЛЕНИЕ (НАНЯТЬ)
+   ВОССТАНОВЛЕНИЕ
    ============================================================ */
 
 export function hireMember(id) {
@@ -283,7 +273,7 @@ export async function deleteMember(id) {
 }
 
 /* ============================================================
-   ИНИЦИАЛИЗАЦИЯ ОБРАБОТЧИКОВ ФОРМЫ
+   ИНИЦИАЛИЗАЦИЯ ОБРАБОТЧИКОВ
    ============================================================ */
 
 export function initSostavHandlers() {
