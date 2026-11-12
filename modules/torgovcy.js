@@ -1,6 +1,5 @@
 /* ============================================================
    TORGOVCY.JS — Логика раздела «Торговцы»
-   Добавление, фильтры, репутация, удаление
    ============================================================ */
 
 import {
@@ -41,7 +40,6 @@ export function renderTraders() {
     return;
   }
 
-  // Группировка по городам
   const byCity = {};
   items.forEach(t => {
     if (!byCity[t.city]) byCity[t.city] = [];
@@ -84,8 +82,6 @@ export function renderTraders() {
 
   list.innerHTML = html;
 
-  // ---------- Обработчики ----------
-
   list.querySelectorAll('[data-tr-save]').forEach(btn => {
     btn.addEventListener('click', () => {
       const id = btn.dataset.trSave;
@@ -120,13 +116,12 @@ export function renderTraders() {
 }
 
 /* ============================================================
-   ОБНОВЛЕНИЕ DATALIST И ФИЛЬТРА ГОРОДОВ
+   DATALIST И ФИЛЬТР ГОРОДОВ
    ============================================================ */
 
 export function updateCityDatalist() {
   const cities = new Set(state.traders.map(t => t.city));
 
-  // Datalist для автодополнения в форме
   const datalist = $('tr-cities-list');
   if (datalist) {
     datalist.innerHTML = Array.from(cities).sort().map(c =>
@@ -134,7 +129,6 @@ export function updateCityDatalist() {
     ).join('');
   }
 
-  // Фильтр городов
   const filterCity = $('tr-filter-city');
   if (filterCity) {
     const current = filterCity.value;
@@ -167,7 +161,6 @@ export function addTrader() {
     return;
   }
 
-  // Проверка на дубликат (город + имя)
   const existing = state.traders.find(t =>
     t.city.toLowerCase() === city.toLowerCase() &&
     t.name.toLowerCase() === name.toLowerCase()
@@ -198,11 +191,10 @@ function showError(id, msg) {
 }
 
 /* ============================================================
-   ИНИЦИАЛИЗАЦИЯ ВЫПАДАЮЩИХ СПИСКОВ И ОБРАБОТЧИКОВ
+   ИНИЦИАЛИЗАЦИЯ
    ============================================================ */
 
 export function initTorgovcyHandlers() {
-  // Категории в форме добавления
   const catSel = $('tr-category');
   TRADER_CATEGORIES.forEach(c => {
     const opt = document.createElement('option');
@@ -211,7 +203,6 @@ export function initTorgovcyHandlers() {
     catSel.appendChild(opt);
   });
 
-  // Категории в фильтре
   const filterCat = $('tr-filter-category');
   TRADER_CATEGORIES.forEach(c => {
     const opt = document.createElement('option');
@@ -220,10 +211,7 @@ export function initTorgovcyHandlers() {
     filterCat.appendChild(opt);
   });
 
-  // Обработчики фильтров
   $('tr-filter-city').addEventListener('change', renderTraders);
   $('tr-filter-category').addEventListener('change', renderTraders);
-
-  // Обработчик кнопки «Добавить»
   $('btn-add-trader').addEventListener('click', addTrader);
 }
