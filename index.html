@@ -7,7 +7,7 @@
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
- 
+
 <!-- ================= ШАПКА ================= -->
 <div class="topbar">
   <div class="campaign-start" id="topbar-start">—</div>
@@ -30,6 +30,7 @@
   <div class="modal">
     <button class="modal-close" data-close>×</button>
     <h2>Состав гильдии</h2>
+
     <div class="row">
       <div class="field" style="grid-column: span 2;">
         <label for="member-name">Имя</label>
@@ -43,6 +44,35 @@
         </select>
       </div>
     </div>
+
+    <div class="row">
+      <div class="field">
+        <label for="member-species">Вид</label>
+        <input type="text" id="member-species" placeholder="Человек, эльф, орк...">
+      </div>
+      <div class="field">
+        <label for="member-level">Уровень</label>
+        <select id="member-level"></select>
+      </div>
+    </div>
+
+    <div class="row">
+      <div class="field" style="grid-column: span 2;">
+        <label for="member-class">Класс</label>
+        <div class="class-row">
+          <select id="member-class"></select>
+          <button type="button" class="small class-toggle" id="btn-add-class" title="Добавить второй класс">+</button>
+        </div>
+      </div>
+      <div class="field" id="member-class-2-wrapper" style="grid-column: span 2; display:none;">
+        <label for="member-class-2">Второй класс</label>
+        <div class="class-row">
+          <select id="member-class-2"></select>
+          <button type="button" class="small danger class-toggle" id="btn-remove-class" title="Убрать второй класс">−</button>
+        </div>
+      </div>
+    </div>
+
     <button id="btn-add-member">Добавить</button>
     <div class="error" id="members-error"></div>
     <div class="member-list" id="members-list"></div>
