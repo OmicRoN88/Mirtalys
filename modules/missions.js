@@ -18,20 +18,17 @@ import { showConfirm } from './dialogi.js';
    ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ
    ============================================================ */
 
-// Остаток в часах (может быть отрицательным)
 function getRemainingHours(mission) {
   const start = mission.createdAt;
   const end = addMinutes(start, mission.durationHours * 60);
   const nowAbs = absoluteDay(state.date);
   const endAbs = absoluteDay(end);
   const dayDiff = endAbs - nowAbs;
-  // Учитываем часы внутри дня
   const nowMinutes = state.date.hours * 60 + state.date.minutes;
   const endMinutes = end.hours * 60 + end.minutes;
   return dayDiff * 24 + (endMinutes - nowMinutes) / 60;
 }
 
-// Форматирование остатка: «X дн.» / «X ч.» / «Просрочено»
 function formatRemaining(mission) {
   const hours = getRemainingHours(mission);
   if (hours <= 0) return 'Просрочено';
@@ -43,7 +40,6 @@ function formatRemaining(mission) {
   return `Осталось: ${h} ч.`;
 }
 
-// Статус-класс для плашки
 function getMissionClass(mission) {
   if (mission.status === 'success') return 'success';
   if (mission.status === 'failed') return 'failed';
@@ -51,15 +47,26 @@ function getMissionClass(mission) {
   return '';
 }
 
-// Сортировка по остатку (короткие сверху), затем по статусу
 function sortByRemaining(a, b) {
   const ra = getRemainingHours(a);
   const rb = getRemainingHours(b);
   return ra - rb;
 }
 
+function formatDuration(hours) {
+  if (hours >= 24 && hours % 24 === 0) {
+    return `${hours / 24} дн.`;
+  }
+  if (hours >= 24) {
+    const d = Math.floor(hours / 24);
+    const h = hours % 24;
+    return `${d} дн. ${h} ч.`;
+  }
+  return `${hours} ч.`;
+}
+
 /* ============================================================
-   ОТРИСОВКА СПИСКА МИССИЙ
+   ОТРИСОВКА
    ============================================================ */
 
 export function renderMissions() {
@@ -110,7 +117,6 @@ function renderProposed() {
     list.appendChild(card);
   });
 
-  // Обработчики
   list.querySelectorAll('[data-mission-toggle]').forEach(el => {
     el.addEventListener('click', (e) => {
       if (e.target.closest('button')) return;
@@ -141,7 +147,6 @@ function renderAccepted() {
     return;
   }
 
-  // Сортировка: active (по остатку) → success → failed
   accepted.sort((a, b) => {
     const order = { active: 0, success: 1, failed: 2 };
     const oa = order[a.status] ?? 3;
@@ -196,7 +201,6 @@ function renderAccepted() {
     list.appendChild(card);
   });
 
-  // Обработчики
   list.querySelectorAll('[data-mission-toggle]').forEach(el => {
     el.addEventListener('click', (e) => {
       if (e.target.closest('button')) return;
@@ -219,20 +223,8 @@ function renderAccepted() {
   });
 }
 
-function formatDuration(hours) {
-  if (hours >= 24 && hours % 24 === 0) {
-    return `${hours / 24} дн.`;
-  }
-  if (hours >= 24) {
-    const d = Math.floor(hours / 24);
-    const h = hours % 24;
-    return `${d} дн. ${h} ч.`;
-  }
-  return `${hours} ч.`;
-}
-
 /* ============================================================
-   ДОБАВЛЕНИЕ МИССИИ (форма)
+   ДОБАВЛЕНИЕ МИССИИ
    ============================================================ */
 
 export function addMission() {
@@ -263,7 +255,6 @@ export function addMission() {
   });
   persist();
 
-  // Очистка формы
   $('mission-type').value = 'Общее';
   $('mission-issuer').value = '';
   $('mission-goal').value = '';
@@ -272,7 +263,6 @@ export function addMission() {
   $('mission-hours').value = '';
   $('mission-issuer-wrapper').style.display = 'none';
 
-  // Закрываем форму, возвращаемся к спискам
   $('modal-mission-form').style.display = 'none';
   renderMissions();
 }
@@ -285,7 +275,7 @@ function acceptMission(id) {
   const m = state.missions.find(x => x.id === id);
   if (!m) return;
   m.status = 'active';
-  m.createdAt = { ...state.date }; // срок начинает тикать с момента принятия
+  m.createdAt = { ...state.date };
   persist();
   renderMissions();
 }
@@ -357,20 +347,17 @@ export async function checkOverdueMissions() {
    ============================================================ */
 
 export function initMissionsHandlers() {
-  // Кнопка «Сформировать миссию» — открывает форму
   $('btn-create-mission').addEventListener('click', () => {
     $('modal-mission-form').style.display = 'flex';
     const errEl = $('mission-error');
     if (errEl) errEl.textContent = '';
   });
 
-  // Переключение типа миссии
   $('mission-type').addEventListener('change', () => {
     const type = $('mission-type').value;
     $('mission-issuer-wrapper').style.display = type === 'Личное' ? 'flex' : 'none';
   });
 
-  // Пересчёт дней ↔ часов
   $('mission-days').addEventListener('input', () => {
     const days = parseInt($('mission-days').value, 10);
     if (!isNaN(days) && days >= 0) {
@@ -385,6 +372,5 @@ export function initMissionsHandlers() {
     }
   });
 
-  // Кнопка «Добавить»
   $('btn-add-mission').addEventListener('click', addMission);
 }
