@@ -80,6 +80,9 @@ export function loadState() {
       if (!m.statusDate) m.statusDate = null;
       if (!m.info) m.info = '';
       if (!m.expanded) m.expanded = false;
+      if (!Array.isArray(m.classes)) m.classes = [];
+      if (typeof m.level !== 'number') m.level = 1;
+      if (!m.species) m.species = '';
     });
     return s;
   } catch {
@@ -122,3 +125,9 @@ export const TRADER_CATEGORIES = ['Оружейник', 'Бронник', 'Ле�
                                   'Магический торговец', 'Прочее'];
 
 export const CAMPAIGN_START = { year: 2926, month: 2, day: 19 };
+
+export const DND_CLASSES = ['Артефактор', 'Бард', 'Варвар', 'Воин', 'Волшебник',
+                            'Друид', 'Жрец', 'Колдун', 'Монах', 'Паладин', 'Плут',
+                            'Следопыт', 'Чародей'];
+
+export const DND_LEVELS = Array.from({ length: 20 }, (_, i) => i + 1);
