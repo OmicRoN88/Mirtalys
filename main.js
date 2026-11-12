@@ -1,9 +1,8 @@
 /* ============================================================
    MAIN.JS — Точка входа Мирталиса
-   Импортирует модули, инициализирует, вешает обработчики меню
    ============================================================ */
 
-import { $, state, persist } from './modules/core.js';
+import { $ } from './modules/core.js';
 
 import {
   updateDateDisplay, fillDateInputs, initDateSelects, initDateHandlers
@@ -27,13 +26,10 @@ import {
 } from './modules/torgovcy.js';
 
 /* ============================================================
-   «МОСТИКИ» ДЛЯ РАЗРЫВА ЦИКЛИЧЕСКИХ ЗАВИСИМОСТЕЙ
+   «МОСТИКИ»
    ============================================================ */
 
-// sostav.js вызывает window.__renderBank() после изменений состава
 window.__renderBank = renderBank;
-
-// date.js вызывает window.__renderExpenseInfo() после изменения даты
 window.__renderExpenseInfo = renderExpenseInfo;
 
 /* ============================================================
@@ -45,7 +41,6 @@ function openModal(name) {
   if (!el) return;
   el.style.display = 'flex';
 
-  // При открытии вкладки — отрисовываем её содержимое
   if (name === 'members') renderMembers();
   if (name === 'bank') renderBank();
   if (name === 'date') { fillDateInputs(); updateDateDisplay(); }
@@ -65,14 +60,13 @@ function showError(id, msg) {
 }
 
 /* ============================================================
-   ОБРАБОТЧИКИ ГЛАВНОГО МЕНЮ
+   ОБРАБОТЧИКИ МЕНЮ
    ============================================================ */
 
 document.querySelectorAll('.main-menu button').forEach(btn => {
   btn.addEventListener('click', () => openModal(btn.dataset.modal));
 });
 
-// Закрытие модальных окон: клик по фону или по крестику
 document.querySelectorAll('.modal-overlay').forEach(overlay => {
   overlay.addEventListener('click', e => {
     if (e.target === overlay) closeModal(overlay);
@@ -83,23 +77,14 @@ document.querySelectorAll('.modal-overlay').forEach(overlay => {
 });
 
 /* ============================================================
-   ИНИЦИАЛИЗАЦИЯ ВСЕХ МОДУЛЕЙ
+   ИНИЦИАЛИЗАЦИЯ
    ============================================================ */
 
-// Дата
 initDateSelects();
 initDateHandlers();
-
-// Состав
 initSostavHandlers();
-
-// Банк
 initBankHandlers();
-
-// Склад
 initSkladHandlers();
-
-// Торговцы
 initTorgovcyHandlers();
 
 /* ============================================================
