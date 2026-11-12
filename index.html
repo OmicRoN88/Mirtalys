@@ -16,13 +16,13 @@
 
 <!-- ================= ГЛАВНОЕ МЕНЮ ================= -->
 <div class="main-menu">
-  <button data-modal="members">Состав</button>
   <button data-modal="date">Дата</button>
+  <button data-modal="missions">Миссии</button>
   <button data-modal="bank">Банк</button>
   <button data-modal="warehouse">Склад</button>
   <button data-modal="traders">Торговцы</button>
-  <button data-modal="missions">Миссии</button>
   <button data-modal="business">Бизнес</button>
+  <button data-modal="members">Состав</button>
 </div>
 
 <!-- ================= МОДАЛЬНОЕ ОКНО: СОСТАВ ================= -->
@@ -83,6 +83,69 @@
     </div>
     <button id="btn-set-date">Установить</button>
     <div class="error" id="date-error"></div>
+  </div>
+</div>
+
+<!-- ================= МОДАЛЬНОЕ ОКНО: МИССИИ ================= -->
+<div class="modal-overlay" id="modal-missions" style="display:none;">
+  <div class="modal">
+    <button class="modal-close" data-close>×</button>
+    <h2>Миссии</h2>
+
+    <div class="bank-actions" style="margin-bottom: 16px;">
+      <button id="btn-create-mission">Сформировать миссию</button>
+    </div>
+
+    <div class="section-title">Предлагаемые миссии</div>
+    <div id="missions-proposed-list"></div>
+
+    <div class="section-title">Принятые миссии</div>
+    <div id="missions-accepted-list"></div>
+  </div>
+</div>
+
+<!-- ================= МОДАЛЬНОЕ ОКНО: ФОРМА МИССИИ ================= -->
+<div class="modal-overlay" id="modal-mission-form" style="display:none;">
+  <div class="modal">
+    <button class="modal-close" data-close>×</button>
+    <h2>Новая миссия</h2>
+
+    <div class="row">
+      <div class="field">
+        <label for="mission-type">Задание</label>
+        <select id="mission-type">
+          <option value="Общее">Общее</option>
+          <option value="Личное">Личное</option>
+        </select>
+      </div>
+      <div class="field" id="mission-issuer-wrapper" style="display:none;">
+        <label for="mission-issuer">Кто выдал</label>
+        <input type="text" id="mission-issuer" placeholder="Фолен Берд. Тавернщик из Эргийна">
+      </div>
+    </div>
+
+    <div class="field">
+      <label for="mission-goal">Цель</label>
+      <textarea id="mission-goal" placeholder="Разведать шахту..."></textarea>
+    </div>
+
+    <div class="row" style="margin-top: 12px;">
+      <div class="field">
+        <label for="mission-reward">Награда (ЗМ)</label>
+        <input type="number" id="mission-reward" min="0" step="1">
+      </div>
+      <div class="field">
+        <label for="mission-days">Дни</label>
+        <input type="number" id="mission-days" min="0" step="1">
+      </div>
+      <div class="field">
+        <label for="mission-hours">Часы</label>
+        <input type="number" id="mission-hours" min="0" step="1">
+      </div>
+    </div>
+
+    <button id="btn-add-mission" style="margin-top: 8px;">Добавить</button>
+    <div class="error" id="mission-error"></div>
   </div>
 </div>
 
@@ -239,15 +302,6 @@
       </div>
     </div>
     <div id="tr-list"></div>
-  </div>
-</div>
-
-<!-- ================= МОДАЛЬНОЕ ОКНО: МИССИИ ================= -->
-<div class="modal-overlay" id="modal-missions" style="display:none;">
-  <div class="modal">
-    <button class="modal-close" data-close>×</button>
-    <h2>Миссии</h2>
-    <div class="empty">Раздел в разработке 🛠️</div>
   </div>
 </div>
 
