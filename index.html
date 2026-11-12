@@ -194,7 +194,6 @@
   }
   .hint { font-size: 0.75rem; color: var(--text-dim); margin-top: 3px; }
 
-  /* ---------- СОСТАВ ---------- */
   .member-list { margin-top: 18px; display: flex; flex-direction: column; gap: 8px; }
   .member-card {
     background: var(--panel-2);
@@ -252,7 +251,6 @@
   .mc-body .row { margin-top: 10px; }
   .mc-body textarea { min-height: 80px; }
 
-  /* ---------- БАНК ---------- */
   .bank-total {
     text-align: center;
     font-size: 2.4rem;
@@ -660,7 +658,7 @@
     <div class="row">
       <div class="field" style="grid-column: span 2;">
         <label for="wh-name">Название</label>
-        <input type="text" id="wh-name" placeholder="Стальные слитки">
+        <input type="text" id="wh-name" placeholder="Кольчуга, меч, зелье...">
       </div>
       <div class="field">
         <label for="wh-qty">Количество</label>
@@ -702,12 +700,12 @@
     <div class="row">
       <div class="field">
         <label for="tr-city">Город</label>
-        <input type="text" id="tr-city" list="tr-cities-list" placeholder="Воронеж">
+        <input type="text" id="tr-city" list="tr-cities-list" placeholder="Эргийн">
         <datalist id="tr-cities-list"></datalist>
       </div>
       <div class="field">
         <label for="tr-name">Имя</label>
-        <input type="text" id="tr-name" placeholder="Иван">
+        <input type="text" id="tr-name" placeholder="Фолен Бёрд">
       </div>
       <div class="field">
         <label for="tr-category">Категория</label>
@@ -856,7 +854,7 @@ function formatQty(n) {
 }
 
 /* ============================================================
-   ДАТА
+   ДАТА — точный подсчёт дней
    ============================================================ */
 
 function formatDate(date) {
@@ -881,11 +879,17 @@ function weekdayIndex(date) {
 
 function daysInMonth(month) { return DAYS_IN_MONTH[month - 1]; }
 
-// Разница в днях между двумя датами (b - a)
+// Точный «абсолютный день» от 1 января 1 года (без високосных)
+function absoluteDay(d) {
+  let days = (d.year - 1) * 365;
+  for (let m = 1; m < d.month; m++) days += daysInMonth(m);
+  days += d.day - 1;
+  return days;
+}
+
+// Разница в днях: b - a
 function daysBetween(a, b) {
-  // Приводим к «абсолютному дню» (грубая оценка, без учёта високосных)
-  const abs = d => d.year * 365 + (d.month - 1) * 31 + d.day;
-  return abs(b) - abs(a);
+  return absoluteDay(b) - absoluteDay(a);
 }
 
 function addMinutes(date, minutes) {
@@ -917,7 +921,6 @@ function updateDateDisplay() {
   $('topbar-date').innerHTML = formatted;
   $('date-display-big').textContent = formatted;
 
-  // Старт кампании
   const startStr = `${CAMPAIGN_START.day} ${MONTHS[CAMPAIGN_START.month - 1]}, ${CAMPAIGN_START.year} года`;
   const passed = daysBetween(CAMPAIGN_START, state.date);
   const passedStr = passed >= 0 ? passed : 0;
@@ -1040,9 +1043,11 @@ function renderMembers() {
     list.innerHTML = '<div class="empty">Пока никого нет</div>';
     return;
   }
-  // Сортировка: сначала активные, потом уволенные; внутри — по имени
+  // Сортировка: активные Игроки → активные НИПы → уволенные Игроки → уволенные НИПы
   const sorted = [...state.members].sort((a, b) => {
-    if (a.fired !== b.fired) return a.fired ? 1 : -1;
+    const groupA = (a.fired ? 2 : 0) + (a.type === 'Игрок' ? 0 : 1);
+    const groupB = (b.fired ? 2 : 0) + (b.type === 'Игрок' ? 0 : 1);
+    if (groupA !== groupB) return groupA - groupB;
     return a.name.localeCompare(b.name);
   });
 
@@ -1051,13 +1056,11 @@ function renderMembers() {
     const card = document.createElement('div');
     card.className = 'member-card' + (m.fired ? ' fired' : '');
 
-    // Заголовок
     const roleLabel = m.fired ? 'Уволен' : m.type;
     const titles = [];
-    if (m.rank) titles.push(`Звание: ${escapeHtml(m.rank)}`);
-    if (m.position) titles.push(`Должность: ${escapeHtml(m.position)}`);
+    if (m.rank) titles.push(`<span>Звание: ${escapeHtml(m.rank)}</span>`);
+    if (m.position) titles.push(`<span>Профессия: ${escapeHtml(m.position)}</span>`);
 
-    // Статус
     let statusHtml = '';
     if (m.status && m.statusDate) {
       const diff = daysBetween(m.statusDate, state.date);
@@ -1069,15 +1072,6 @@ function renderMembers() {
       }
     } else if (m.status) {
       statusHtml = `<div class="mc-status">${escapeHtml(m.status)}</div>`;
-    }
-
-    // Кнопки
-    let btns = '';
-    if (m.fired) {
-      btns = `<button class="success-btn small" data-hire="${m.id}">Нанять</button>
-              <button class="danger small" data-delete="${m.id}">Удалить</button>`;
-    } else {
-      btns = `<button class="danger small" data-fire="${m.id}">Уволить</button>`;
     }
 
     const arrow = m.expanded ? '▲' : '▼';
@@ -1099,7 +1093,7 @@ function renderMembers() {
             <input type="text" data-field="rank" data-id="${m.id}" value="${escapeAttr(m.rank)}" placeholder="Например, Капитан">
           </div>
           <div class="field">
-            <label>Должность</label>
+            <label>Профессия</label>
             <input type="text" data-field="position" data-id="${m.id}" value="${escapeAttr(m.position)}" placeholder="Например, Управляющий">
           </div>
         </div>
@@ -1140,10 +1134,8 @@ function renderMembers() {
     list.appendChild(card);
   });
 
-  // Обработчики
   list.querySelectorAll('[data-toggle]').forEach(el => {
     el.addEventListener('click', (e) => {
-      // Не переключать, если клик по кнопке
       if (e.target.closest('button')) return;
       const m = state.members.find(x => x.id === el.dataset.toggle);
       if (!m) return;
@@ -1395,7 +1387,7 @@ function renderBank() {
 function deposit(name, amount) {
   showError('bank-error', '');
   const acc = ensureAccount(name);
-  acc.personalIn += amount;
+  acc.personalIn = roundTenths(acc.personalIn + amount);
   logHistory(`Игрок ${name} сделал личный вклад ${formatMoney(amount)}`);
   saveState();
   renderBank();
@@ -1415,7 +1407,7 @@ async function withdraw(name, amount) {
     if (!ok) return;
   }
 
-  acc.personalOut += amount;
+  acc.personalOut = roundTenths(acc.personalOut + amount);
   logHistory(`Игрок ${name} снял ${formatMoney(amount)}`);
   saveState();
   renderBank();
@@ -1432,7 +1424,8 @@ function commonIncome(amount) {
   const remainder = roundTenths(amount - distributed);
 
   players.forEach(p => {
-    ensureAccount(p.name).commonShare += per;
+    const acc = ensureAccount(p.name);
+    acc.commonShare = roundTenths(acc.commonShare + per);
   });
   // Остаток идёт в «нераспределённые средства», чтобы банк вырос на полную сумму
   state.unallocatedFunds = roundTenths((state.unallocatedFunds || 0) + remainder);
@@ -1450,10 +1443,18 @@ function commonExpense(amount) {
   const bank = getBankTotal();
   if (amount > bank) { showError('bank-error', 'В банке недостаточно средств'); return; }
 
+  // Округление ВВЕРХ — вкладчики платят чуть больше
   const per = ceilTenths(amount / players.length);
+  const charged = roundTenths(per * players.length);
+  const excess = roundTenths(charged - amount); // сколько лишнего «сгорело» у вкладчиков
+
   players.forEach(p => {
-    ensureAccount(p.name).commonExpenseShare += per;
+    const acc = ensureAccount(p.name);
+    acc.commonExpenseShare = roundTenths(acc.commonExpenseShare + per);
   });
+  // Компенсация: банк должен уменьшиться ровно на amount, а счета уменьшились на charged.
+  // Возвращаем excess в unallocatedFunds.
+  state.unallocatedFunds = roundTenths((state.unallocatedFunds || 0) + excess);
   state.totals.commonExpense = roundTenths(state.totals.commonExpense + amount);
   logHistory(`Гильдия потратила со счёта ${formatMoney(amount)}`);
   saveState();
@@ -1599,9 +1600,14 @@ async function payExpenses() {
   const players = getPlayers();
   if (!players.length) { showError('pay-error', 'Нет игроков для распределения траты'); return; }
   const per = ceilTenths(amountToPay / players.length);
+  const charged = roundTenths(per * players.length);
+  const excess = roundTenths(charged - amountToPay);
+
   players.forEach(p => {
-    ensureAccount(p.name).commonExpenseShare += per;
+    const acc = ensureAccount(p.name);
+    acc.commonExpenseShare = roundTenths(acc.commonExpenseShare + per);
   });
+  state.unallocatedFunds = roundTenths((state.unallocatedFunds || 0) + excess);
   state.totals.commonExpense = roundTenths(state.totals.commonExpense + amountToPay);
 
   if (unpaid === 0) {
@@ -2091,6 +2097,12 @@ $('btn-reset-bank').addEventListener('click', resetBank);
     filterCat.appendChild(opt);
   });
 })();
+
+/* ============================================================
+   ФИЛЬТР СКЛАДА — обработчик
+   ============================================================ */
+
+$('wh-filter').addEventListener('change', renderWarehouse);
 
 /* ============================================================
    ИНИЦИАЛИЗАЦИЯ
