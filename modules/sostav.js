@@ -19,12 +19,10 @@ export function getPlayers() {
   return state.members.filter(m => m.type === 'Игрок' && !m.fired);
 }
 
-// Формирование строки «Звание: X. Вид. Класс(ы). N уровень. Профессия: Y»
 function buildMemberSubtitle(m) {
   const parts = [];
 
   if (m.rank) parts.push(`Звание: ${m.rank}`);
-
   if (m.species) parts.push(m.species);
 
   if (m.classes && m.classes.length) {
@@ -32,16 +30,12 @@ function buildMemberSubtitle(m) {
     if (cls.length) parts.push(cls.join('/'));
   }
 
-  if (m.level) {
-    parts.push(`${m.level} уровень`);
-  }
-
+  if (m.level) parts.push(`${m.level} уровень`);
   if (m.position) parts.push(`Профессия: ${m.position}`);
 
   return parts.join('. ');
 }
 
-// Считывает поля карточки из DOM в объект m
 function saveMemberFieldsFromDOM(list, m, id) {
   const rankEl = list.querySelector(`[data-field="rank"][data-id="${cssEscape(id)}"]`);
   const posEl = list.querySelector(`[data-field="position"][data-id="${cssEscape(id)}"]`);
@@ -96,6 +90,7 @@ export function renderMembers() {
 
     const c1 = (m.classes && m.classes[0]) ? m.classes[0] : '';
     const c2 = (m.classes && m.classes[1]) ? m.classes[1] : '';
+    const hasSecond = Array.isArray(m.classes) && m.classes.length > 1;
 
     const classOptions1 = DND_CLASSES.map(c =>
       `<option value="${escapeAttr(c)}" ${c === c1 ? 'selected' : ''}>${escapeHtml(c)}</option>`
@@ -149,10 +144,10 @@ export function renderMembers() {
                 <option value="">—</option>
                 ${classOptions1}
               </select>
-              <button type="button" class="small class-toggle" data-add-class="${m.id}" title="Добавить второй класс">+</button>
+              <button type="button" class="small class-toggle" data-add-class="${m.id}" title="Добавить второй класс" ${hasSecond ? 'style="display:none;"' : ''}>+</button>
             </div>
           </div>
-          <div class="field class-second ${c2 ? '' : 'hidden'}" data-class2-wrapper="${m.id}" style="grid-column: span 2;">
+          <div class="field class-second ${hasSecond ? '' : 'hidden'}" data-class2-wrapper="${m.id}" style="grid-column: span 2;">
             <label>Второй класс</label>
             <div class="class-row">
               <select data-field="class2" data-id="${m.id}">
@@ -179,8 +174,6 @@ export function renderMembers() {
     list.appendChild(card);
   });
 
-  // ---------- Обработчики ----------
-
   // Раскрытие/сворачивание
   list.querySelectorAll('[data-toggle]').forEach(el => {
     el.addEventListener('click', (e) => {
@@ -193,7 +186,7 @@ export function renderMembers() {
     });
   });
 
-  // Кнопка «+» — добавить второй класс
+  // Кнопка «+»
   list.querySelectorAll('[data-add-class]').forEach(btn => {
     btn.addEventListener('click', () => {
       const id = btn.dataset.addClass;
@@ -211,7 +204,7 @@ export function renderMembers() {
     });
   });
 
-  // Кнопка «−» — убрать второй класс
+  // Кнопка «−»
   list.querySelectorAll('[data-remove-class]').forEach(btn => {
     btn.addEventListener('click', () => {
       const id = btn.dataset.removeClass;
@@ -237,7 +230,6 @@ export function renderMembers() {
 
       saveMemberFieldsFromDOM(list, m, id);
 
-      // Фильтруем пустые классы и дубликаты
       m.classes = m.classes.filter(c => c && c.trim());
       if (m.classes.length > 1 && m.classes[0] === m.classes[1]) {
         m.classes = [m.classes[0]];
@@ -305,7 +297,7 @@ export function addMember(name, type) {
 }
 
 /* ============================================================
-   УВОЛЬНЕНИЕ
+   УВОЛЬНЕНИЕ / ВОССТАНОВЛЕНИЕ / УДАЛЕНИЕ
    ============================================================ */
 
 export async function fireMember(id) {
@@ -335,10 +327,6 @@ export async function fireMember(id) {
   if (typeof window.__renderBank === 'function') window.__renderBank();
 }
 
-/* ============================================================
-   ВОССТАНОВЛЕНИЕ
-   ============================================================ */
-
 export function hireMember(id) {
   const m = state.members.find(x => x.id === id);
   if (!m) return;
@@ -348,10 +336,6 @@ export function hireMember(id) {
   renderMembers();
   if (typeof window.__renderBank === 'function') window.__renderBank();
 }
-
-/* ============================================================
-   ОКОНЧАТЕЛЬНОЕ УДАЛЕНИЕ
-   ============================================================ */
 
 export async function deleteMember(id) {
   const m = state.members.find(x => x.id === id);
