@@ -6,12 +6,8 @@ import {
   $, state, persist,
   escapeHtml, escapeAttr, cssEscape,
   ensureAccount, formatMoney,
-  MONTHS, DND_CLASSES, DND_LEVELS
+  DND_CLASSES, DND_LEVELS
 } from './core.js';
-
-import {
-  daysBetween, daysInMonth
-} from './date.js';
 
 import { showConfirm } from './dialogi.js';
 
@@ -72,27 +68,14 @@ export function renderMembers() {
     const roleLabel = m.fired ? 'Уволен' : m.type;
     const subtitle = buildMemberSubtitle(m);
 
-    let statusHtml = '';
-    if (m.status && m.statusDate) {
-      const diff = daysBetween(m.statusDate, state.date);
-      const diffAbs = Math.abs(diff);
-      if (diff >= 0) {
-        statusHtml = `<div class="mc-status past">${escapeHtml(m.status)} — ${diffAbs} дн. назад</div>`;
-      } else {
-        statusHtml = `<div class="mc-status future">${escapeHtml(m.status)} — через ${diffAbs} дн.</div>`;
-      }
-    } else if (m.status) {
-      statusHtml = `<div class="mc-status">${escapeHtml(m.status)}</div>`;
-    }
-
     const arrow = m.expanded ? '▲' : '▼';
 
-    // Классы для раскрытой карточки
+    // Классы
     const c1 = (m.classes && m.classes[0]) ? m.classes[0] : '';
     const c2 = (m.classes && m.classes[1]) ? m.classes[1] : '';
 
     // Опции для селектов классов
-    const classOptions = DND_CLASSES.map(c =>
+    const classOptions1 = DND_CLASSES.map(c =>
       `<option value="${escapeAttr(c)}" ${c === c1 ? 'selected' : ''}>${escapeHtml(c)}</option>`
     ).join('');
 
@@ -100,6 +83,7 @@ export function renderMembers() {
       `<option value="${escapeAttr(c)}" ${c === c2 ? 'selected' : ''}>${escapeHtml(c)}</option>`
     ).join('');
 
+    // Опции для уровня
     const levelOptions = DND_LEVELS.map(l =>
       `<option value="${l}" ${l === m.level ? 'selected' : ''}>${l}</option>`
     ).join('');
@@ -110,7 +94,6 @@ export function renderMembers() {
           <span class="mc-name">${escapeHtml(m.name)}</span>
           <span class="mc-role ${m.type === 'Игрок' ? 'player' : 'npc'}">${roleLabel}</span>
           ${subtitle ? `<div class="mc-titles"><span>${escapeHtml(subtitle)}</span></div>` : ''}
-          ${statusHtml}
         </div>
         <span class="mc-arrow">${arrow}</span>
       </div>
@@ -143,7 +126,7 @@ export function renderMembers() {
             <div class="class-row">
               <select data-field="class1" data-id="${m.id}">
                 <option value="">—</option>
-                ${classOptions}
+                ${classOptions1}
               </select>
               <button type="button" class="small class-toggle" data-add-class="${m.id}" title="Добавить второй класс">+</button>
             </div>
@@ -157,27 +140,6 @@ export function renderMembers() {
               </select>
               <button type="button" class="small danger class-toggle" data-remove-class="${m.id}" title="Убрать второй класс">−</button>
             </div>
-          </div>
-        </div>
-        <div class="row">
-          <div class="field" style="grid-column: span 2;">
-            <label>Статус</label>
-            <input type="text" data-field="status" data-id="${m.id}" value="${escapeAttr(m.status)}" placeholder="Например, Пропал">
-          </div>
-          <div class="field">
-            <label>Год</label>
-            <input type="number" data-field="statusYear" data-id="${m.id}" value="${m.statusDate ? m.statusDate.year : ''}" min="1" placeholder="2926">
-          </div>
-          <div class="field">
-            <label>Месяц</label>
-            <select data-field="statusMonth" data-id="${m.id}">
-              <option value="">—</option>
-              ${MONTHS.map((mn, i) => `<option value="${i+1}" ${m.statusDate && m.statusDate.month === i+1 ? 'selected' : ''}>${mn}</option>`).join('')}
-            </select>
-          </div>
-          <div class="field">
-            <label>День</label>
-            <input type="number" data-field="statusDay" data-id="${m.id}" value="${m.statusDate ? m.statusDate.day : ''}" min="1" max="31" placeholder="19">
           </div>
         </div>
         <div class="field" style="margin-top: 10px;">
@@ -218,7 +180,6 @@ export function renderMembers() {
       if (!m) return;
       if (!Array.isArray(m.classes)) m.classes = [];
       if (m.classes.length < 2) {
-        // Добавляем пустой второй класс (пользователь выберет)
         m.classes[1] = '';
         persist();
         renderMembers();
@@ -250,7 +211,6 @@ export function renderMembers() {
       m.rank = list.querySelector(`[data-field="rank"][data-id="${cssEscape(id)}"]`).value.trim();
       m.position = list.querySelector(`[data-field="position"][data-id="${cssEscape(id)}"]`).value.trim();
       m.species = list.querySelector(`[data-field="species"][data-id="${cssEscape(id)}"]`).value.trim();
-      m.status = list.querySelector(`[data-field="status"][data-id="${cssEscape(id)}"]`).value.trim();
       m.info = list.querySelector(`[data-field="info"][data-id="${cssEscape(id)}"]`).value;
 
       // Уровень
@@ -265,16 +225,6 @@ export function renderMembers() {
       m.classes = [];
       if (c1) m.classes.push(c1);
       if (c2 && c2 !== c1) m.classes.push(c2);
-
-      // Статус-дата
-      const y = parseInt(list.querySelector(`[data-field="statusYear"][data-id="${cssEscape(id)}"]`).value, 10);
-      const mo = parseInt(list.querySelector(`[data-field="statusMonth"][data-id="${cssEscape(id)}"]`).value, 10);
-      const d = parseInt(list.querySelector(`[data-field="statusDay"][data-id="${cssEscape(id)}"]`).value, 10);
-      if (y && mo && d) {
-        m.statusDate = { year: y, month: mo, day: d };
-      } else {
-        m.statusDate = null;
-      }
 
       persist();
       renderMembers();
@@ -297,7 +247,7 @@ export function renderMembers() {
    ДОБАВЛЕНИЕ УЧАСТНИКА
    ============================================================ */
 
-export function addMember(name, type, species, class1, class2, level) {
+export function addMember(name, type) {
   const errEl = $('members-error');
   if (errEl) errEl.textContent = '';
 
@@ -312,9 +262,6 @@ export function addMember(name, type, species, class1, class2, level) {
     if (existing.fired) {
       existing.fired = false;
       existing.type = type;
-      existing.species = species || '';
-      existing.classes = [class1, class2].filter(Boolean);
-      existing.level = level || 1;
       persist();
       $('member-name').value = '';
       renderMembers();
@@ -325,17 +272,13 @@ export function addMember(name, type, species, class1, class2, level) {
     return;
   }
 
-  const classes = [];
-  if (class1) classes.push(class1);
-  if (class2 && class2 !== class1) classes.push(class2);
-
   state.members.push({
     id: Date.now() + '_' + Math.random().toString(36).slice(2, 7),
     name, type, fired: false,
-    rank: '', position: '', status: '', statusDate: null, info: '', expanded: false,
-    species: species || '',
-    classes,
-    level: level || 1
+    rank: '', position: '', info: '', expanded: false,
+    species: '',
+    classes: [],
+    level: 1
   });
   if (type === 'Игрок') ensureAccount(name);
   persist();
@@ -410,66 +353,8 @@ export async function deleteMember(id) {
    ============================================================ */
 
 export function initSostavHandlers() {
-  // Заполняем селект классов
-  const classSel = $('member-class');
-  DND_CLASSES.forEach(c => {
-    const opt = document.createElement('option');
-    opt.value = c;
-    opt.textContent = c;
-    classSel.appendChild(opt);
-  });
-
-  // Заполняем селект второго класса (скрыт)
-  const classSel2 = $('member-class-2');
-  DND_CLASSES.forEach(c => {
-    const opt = document.createElement('option');
-    opt.value = c;
-    opt.textContent = c;
-    classSel2.appendChild(opt);
-  });
-
-  // Заполняем селект уровней
-  const levelSel = $('member-level');
-  DND_LEVELS.forEach(l => {
-    const opt = document.createElement('option');
-    opt.value = l;
-    opt.textContent = l;
-    levelSel.appendChild(opt);
-  });
-  levelSel.value = '1';
-
-  // Кнопка «+» — показать второй класс
-  $('btn-add-class').addEventListener('click', () => {
-    $('member-class-2-wrapper').style.display = 'flex';
-    $('btn-add-class').style.display = 'none';
-  });
-
-  // Кнопка «−» — скрыть второй класс
-  $('btn-remove-class').addEventListener('click', () => {
-    $('member-class-2-wrapper').style.display = 'none';
-    $('btn-add-class').style.display = 'inline-flex';
-    $('member-class-2').value = $('member-class').value;
-  });
-
-  // Добавление участника
   $('btn-add-member').addEventListener('click', () => {
-    const name = $('member-name').value;
-    const type = $('member-type').value;
-    const species = $('member-species').value.trim();
-    const class1 = $('member-class').value;
-    const class2Visible = $('member-class-2-wrapper').style.display !== 'none';
-    const class2 = class2Visible ? $('member-class-2').value : '';
-    const level = parseInt($('member-level').value, 10) || 1;
-
-    addMember(name, type, species, class1, class2, level);
-
-    // Сбрасываем форму
-    $('member-species').value = '';
-    $('member-class').selectedIndex = 0;
-    $('member-class-2').selectedIndex = 0;
-    $('member-level').value = '1';
-    $('member-class-2-wrapper').style.display = 'none';
-    $('btn-add-class').style.display = 'inline-flex';
+    addMember($('member-name').value, $('member-type').value);
   });
 
   $('member-name').addEventListener('keydown', e => {
