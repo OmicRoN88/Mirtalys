@@ -1,13 +1,12 @@
 /* ============================================================
    SKLAD.JS — Логика раздела «Склад»
-   Добавление предметов, фильтр, +/-/удаление
    ============================================================ */
 
 import {
   $, state, persist,
   escapeHtml, escapeAttr, cssEscape,
   formatQty, roundTenths,
-  WAREHOUSE_CATEGORIES, WAREHOUSE_UNITS
+  WAREHOUSE_CATEGORIES
 } from './core.js';
 
 import { showConfirm } from './dialogi.js';
@@ -31,7 +30,6 @@ export function renderWarehouse() {
     return;
   }
 
-  // Группировка по категориям
   const byCategory = {};
   items.forEach(i => {
     if (!byCategory[i.category]) byCategory[i.category] = [];
@@ -63,8 +61,6 @@ export function renderWarehouse() {
   });
 
   list.innerHTML = html;
-
-  // ---------- Обработчики ----------
 
   list.querySelectorAll('[data-wh-add]').forEach(btn => {
     btn.addEventListener('click', () => {
@@ -104,7 +100,7 @@ export function renderWarehouse() {
 }
 
 /* ============================================================
-   ДОБАВЛЕНИЕ НА СКЛАД (кнопка «+»)
+   ДОБАВЛЕНИЕ НА СКЛАД
    ============================================================ */
 
 export function addToWarehouse(id, amount) {
@@ -117,7 +113,7 @@ export function addToWarehouse(id, amount) {
 }
 
 /* ============================================================
-   СНЯТИЕ СО СКЛАДА (кнопка «−»)
+   СНЯТИЕ СО СКЛАДА
    ============================================================ */
 
 export async function removeFromWarehouse(id, amount) {
@@ -139,7 +135,7 @@ export async function removeFromWarehouse(id, amount) {
 }
 
 /* ============================================================
-   ДОБАВЛЕНИЕ НОВОГО ПРЕДМЕТА (форма)
+   ДОБАВЛЕНИЕ НОВОГО ПРЕДМЕТА
    ============================================================ */
 
 export function addNewItem() {
@@ -152,13 +148,11 @@ export function addNewItem() {
   if (!name) { showError('wh-error', 'Введите название'); return; }
   if (isNaN(qty) || qty <= 0) { showError('wh-error', 'Количество должно быть > 0'); return; }
 
-  // Для шт. и м — только целые
   if ((unit === 'шт.' || unit === 'м') && !Number.isInteger(qty)) {
     showError('wh-error', 'Для этой единицы измерения количество должно быть целым');
     return;
   }
 
-  // Если предмет с таким названием и единицей уже есть — суммируем
   const existing = state.warehouse.find(i =>
     i.name.toLowerCase() === name.toLowerCase() && i.unit === unit
   );
@@ -186,11 +180,10 @@ function showError(id, msg) {
 }
 
 /* ============================================================
-   ИНИЦИАЛИЗАЦИЯ ВЫПАДАЮЩИХ СПИСКОВ И ОБРАБОТЧИКОВ
+   ИНИЦИАЛИЗАЦИЯ
    ============================================================ */
 
 export function initSkladHandlers() {
-  // Заполняем выпадающие списки категорий
   const catSel = $('wh-category');
   WAREHOUSE_CATEGORIES.forEach(c => {
     const opt = document.createElement('option');
@@ -207,9 +200,6 @@ export function initSkladHandlers() {
     filterSel.appendChild(opt);
   });
 
-  // Обработчик фильтра
   filterSel.addEventListener('change', renderWarehouse);
-
-  // Обработчик кнопки «Добавить»
   $('btn-add-item').addEventListener('click', addNewItem);
 }
