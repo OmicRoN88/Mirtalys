@@ -1,12 +1,9 @@
 /* ============================================================
    DIALOGI.JS — Кастомные диалоги в стиле сайта
-   showConfirm — аналог confirm()
-   showPrompt — аналог prompt()
    ============================================================ */
 
 import { escapeHtml, escapeAttr } from './core.js';
 
-// Аналог confirm() — возвращает Promise<boolean>
 export function showConfirm(message, okText = 'Да', cancelText = 'Отмена') {
   return new Promise(resolve => {
     const overlay = document.createElement('div');
@@ -33,7 +30,6 @@ export function showConfirm(message, okText = 'Да', cancelText = 'Отмена
   });
 }
 
-// Аналог prompt() — возвращает Promise<string|null>
 export function showPrompt(message, defaultValue = '') {
   return new Promise(resolve => {
     const overlay = document.createElement('div');
