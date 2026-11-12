@@ -139,7 +139,8 @@ export function initDateSelects() {
    ============================================================ */
 
 export function initDateHandlers() {
-  $('btn-short-rest').addEventListener('click', () => {
+  // +1 час
+  $('btn-plus-1h').addEventListener('click', () => {
     state.date = addMinutes(state.date, 60);
     persist();
     updateDateDisplay();
@@ -147,14 +148,25 @@ export function initDateHandlers() {
     if (typeof window.__renderExpenseInfo === 'function') window.__renderExpenseInfo();
   });
 
-  $('btn-long-rest').addEventListener('click', () => {
-    state.date = addMinutes(state.date, 8 * 60);
+  // +2 часа
+  $('btn-plus-2h').addEventListener('click', () => {
+    state.date = addMinutes(state.date, 120);
     persist();
     updateDateDisplay();
     fillDateInputs();
     if (typeof window.__renderExpenseInfo === 'function') window.__renderExpenseInfo();
   });
 
+  // +6 часов
+  $('btn-plus-6h').addEventListener('click', () => {
+    state.date = addMinutes(state.date, 360);
+    persist();
+    updateDateDisplay();
+    fillDateInputs();
+    if (typeof window.__renderExpenseInfo === 'function') window.__renderExpenseInfo();
+  });
+
+  // Следующий день (07:00)
   $('btn-next-day').addEventListener('click', () => {
     state.date = nextDayMorning(state.date);
     persist();
@@ -163,6 +175,7 @@ export function initDateHandlers() {
     if (typeof window.__renderExpenseInfo === 'function') window.__renderExpenseInfo();
   });
 
+  // Установить вручную
   $('btn-set-date').addEventListener('click', () => {
     const errEl = $('date-error');
     if (errEl) errEl.textContent = '';
