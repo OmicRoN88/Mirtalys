@@ -255,6 +255,7 @@ export function addMission() {
   });
   persist();
 
+  // Очистка формы
   $('mission-type').value = 'Общее';
   $('mission-issuer').value = '';
   $('mission-goal').value = '';
@@ -263,7 +264,9 @@ export function addMission() {
   $('mission-hours').value = '';
   $('mission-issuer-wrapper').style.display = 'none';
 
+  // Возвращаемся к списку миссий
   $('modal-mission-form').style.display = 'none';
+  $('modal-missions').style.display = 'flex';
   renderMissions();
 }
 
@@ -347,17 +350,39 @@ export async function checkOverdueMissions() {
    ============================================================ */
 
 export function initMissionsHandlers() {
+  // Открыть форму создания миссии (закрываем список)
   $('btn-create-mission').addEventListener('click', () => {
+    $('modal-missions').style.display = 'none';
     $('modal-mission-form').style.display = 'flex';
     const errEl = $('mission-error');
     if (errEl) errEl.textContent = '';
   });
 
+  // Закрыть форму (крестик) — вернуться к списку
+  $('modal-mission-form').querySelectorAll('[data-close]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      $('modal-mission-form').style.display = 'none';
+      $('modal-missions').style.display = 'flex';
+      renderMissions();
+    });
+  });
+
+  // Клик по фону формы — вернуться к списку
+  $('modal-mission-form').addEventListener('click', e => {
+    if (e.target === $('modal-mission-form')) {
+      $('modal-mission-form').style.display = 'none';
+      $('modal-missions').style.display = 'flex';
+      renderMissions();
+    }
+  });
+
+  // Переключение типа миссии
   $('mission-type').addEventListener('change', () => {
     const type = $('mission-type').value;
     $('mission-issuer-wrapper').style.display = type === 'Личное' ? 'flex' : 'none';
   });
 
+  // Пересчёт дни ↔ часы
   $('mission-days').addEventListener('input', () => {
     const days = parseInt($('mission-days').value, 10);
     if (!isNaN(days) && days >= 0) {
@@ -372,5 +397,6 @@ export function initMissionsHandlers() {
     }
   });
 
+  // Добавить миссию
   $('btn-add-mission').addEventListener('click', addMission);
 }
