@@ -25,18 +25,24 @@ import {
   renderTraders, initTorgovcyHandlers
 } from './modules/torgovcy.js';
 
+import {
+  renderMissions, checkOverdueMissions, initMissionsHandlers
+} from './modules/missions.js';
+
 /* ============================================================
    «МОСТИКИ»
    ============================================================ */
 
 window.__renderBank = renderBank;
 window.__renderExpenseInfo = renderExpenseInfo;
+window.__renderMissions = renderMissions;
+window.__checkOverdueMissions = checkOverdueMissions;
 
 /* ============================================================
    ОТКРЫТИЕ / ЗАКРЫТИЕ МОДАЛЬНЫХ ОКОН
    ============================================================ */
 
-function openModal(name) {
+async function openModal(name) {
   const el = $('modal-' + name);
   if (!el) return;
   el.style.display = 'flex';
@@ -48,6 +54,10 @@ function openModal(name) {
   if (name === 'expenses') { renderExpenses(); showError('pay-error', ''); }
   if (name === 'warehouse') { renderWarehouse(); showError('wh-error', ''); }
   if (name === 'traders') { renderTraders(); showError('tr-error', ''); }
+  if (name === 'missions') {
+    renderMissions();
+    await checkOverdueMissions();
+  }
 }
 
 function closeModal(el) {
@@ -86,6 +96,7 @@ initSostavHandlers();
 initBankHandlers();
 initSkladHandlers();
 initTorgovcyHandlers();
+initMissionsHandlers();
 
 /* ============================================================
    ПЕРВИЧНАЯ ОТРИСОВКА
