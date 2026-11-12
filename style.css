@@ -1,6 +1,5 @@
 /* ============================================================
    STYLE.CSS — Стили Мирталиса
-   Тёмная тема, модальные окна, карточки, кнопки, поля
    ============================================================ */
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -175,6 +174,21 @@ input:focus, select:focus, textarea:focus { border-color: var(--accent); }
 input[type=number] { -moz-appearance: textfield; }
 input::-webkit-outer-spin-button,
 input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+
+/* Классы: select + кнопка +/- */
+.class-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.class-row select { flex: 1; }
+.class-toggle {
+  min-width: 38px;
+  padding: 9px 12px;
+  font-size: 1rem;
+  line-height: 1;
+}
+.class-second.hidden { display: none; }
 
 /* ============================================================
    КНОПКИ
@@ -558,7 +572,7 @@ button.warn:hover { background: #d08030; }
 .trader-card .tc-controls input { width: 100px; }
 
 /* ============================================================
-   ДИАЛОГИ (showConfirm / showPrompt)
+   ДИАЛОГИ
    ============================================================ */
 
 .dialog-overlay {
