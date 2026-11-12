@@ -35,17 +35,26 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 12px 20px;
+    padding: 10px 20px;
     background: var(--panel);
     border-bottom: 1px solid var(--border);
     position: sticky;
     top: 0;
     z-index: 100;
+    flex-wrap: wrap;
+    gap: 10px;
   }
+  .topbar .campaign-start {
+    font-size: 0.85rem;
+    color: var(--text-dim);
+    letter-spacing: 0.3px;
+  }
+  .topbar .campaign-start strong { color: var(--gold); font-weight: 600; }
   .topbar .date-line {
     font-size: 0.9rem;
     color: var(--text-dim);
     letter-spacing: 0.3px;
+    text-align: right;
   }
   .topbar .date-line strong { color: var(--text); font-weight: 600; }
 
@@ -131,7 +140,7 @@
     text-transform: uppercase;
     letter-spacing: 0.4px;
   }
-  input, select {
+  input, select, textarea {
     background: var(--panel-2);
     border: 1px solid var(--border);
     border-radius: 8px;
@@ -143,7 +152,8 @@
     width: 100%;
     transition: border-color 0.2s;
   }
-  input:focus, select:focus { border-color: var(--accent); }
+  textarea { resize: vertical; min-height: 60px; }
+  input:focus, select:focus, textarea:focus { border-color: var(--accent); }
   input[type=number] { -moz-appearance: textfield; }
   input::-webkit-outer-spin-button,
   input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
@@ -184,27 +194,30 @@
   }
   .hint { font-size: 0.75rem; color: var(--text-dim); margin-top: 3px; }
 
+  /* ---------- СОСТАВ ---------- */
   .member-list { margin-top: 18px; display: flex; flex-direction: column; gap: 8px; }
-  .member-row {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
+  .member-card {
     background: var(--panel-2);
     border: 1px solid var(--border);
     border-radius: 10px;
-    padding: 10px 14px;
+    overflow: hidden;
+  }
+  .member-card.fired { background: #1a1a22; border-color: #2a2a38; opacity: 0.7; }
+  .member-card.fired .mc-name { color: var(--fired); text-decoration: line-through; }
+
+  .mc-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 14px;
+    cursor: pointer;
     gap: 10px;
     flex-wrap: wrap;
+    user-select: none;
   }
-  .member-row.fired {
-    background: #1a1a22;
-    border-color: #2a2a38;
-  }
-  .member-row.fired .member-name { color: var(--fired); text-decoration: line-through; }
-  .member-row.fired .member-role { background: rgba(85,85,106,0.2); color: var(--fired); }
-
-  .member-row .member-name { font-weight: 600; }
-  .member-row .member-role {
+  .mc-head:hover { background: rgba(124,92,255,0.05); }
+  .mc-name { font-weight: 600; }
+  .mc-role {
     font-size: 0.75rem;
     padding: 2px 8px;
     border-radius: 999px;
@@ -214,11 +227,32 @@
     text-transform: uppercase;
     letter-spacing: 0.3px;
   }
-  .member-row .role-manager { background: rgba(255,209,102,0.15); color: var(--gold); }
-  .member-row .role-player { background: rgba(74,222,128,0.15); color: var(--success); }
-  .member-row .role-employee { background: rgba(124,92,255,0.15); color: var(--accent); }
-  .member-row .role-merc { background: rgba(255,92,108,0.15); color: var(--error); }
+  .mc-role.player { background: rgba(74,222,128,0.15); color: var(--success); }
+  .mc-role.npc { background: rgba(255,184,107,0.15); color: var(--warning); }
+  .mc-titles {
+    font-size: 0.8rem;
+    color: var(--text-dim);
+    margin-top: 2px;
+  }
+  .mc-titles span { margin-right: 10px; }
+  .mc-status {
+    font-size: 0.8rem;
+    margin-top: 2px;
+  }
+  .mc-status.past { color: var(--error); }
+  .mc-status.future { color: var(--success); }
+  .mc-arrow { color: var(--text-dim); font-size: 0.8rem; }
 
+  .mc-body {
+    padding: 0 14px 14px;
+    border-top: 1px solid var(--border);
+    display: none;
+  }
+  .mc-body.open { display: block; }
+  .mc-body .row { margin-top: 10px; }
+  .mc-body textarea { min-height: 80px; }
+
+  /* ---------- БАНК ---------- */
   .bank-total {
     text-align: center;
     font-size: 2.4rem;
@@ -341,7 +375,6 @@
   }
   .expense-total-row b { color: var(--gold); }
 
-  /* ---------- СКЛАД ---------- */
   .wh-filter {
     display: flex;
     gap: 8px;
@@ -349,10 +382,7 @@
     margin-bottom: 12px;
     flex-wrap: wrap;
   }
-  .wh-filter label {
-    font-size: 0.8rem;
-    color: var(--text-dim);
-  }
+  .wh-filter label { font-size: 0.8rem; color: var(--text-dim); }
   .wh-filter select { width: auto; min-width: 160px; }
 
   .wh-category-title {
@@ -378,20 +408,10 @@
     flex-wrap: wrap;
   }
   .wh-item .wh-name { font-weight: 600; }
-  .wh-item .wh-qty {
-    color: var(--gold);
-    font-weight: 600;
-    margin-left: 8px;
-  }
-  .wh-item .wh-controls {
-    display: flex;
-    gap: 6px;
-    align-items: center;
-    flex-wrap: wrap;
-  }
+  .wh-item .wh-qty { color: var(--gold); font-weight: 600; margin-left: 8px; }
+  .wh-item .wh-controls { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
   .wh-item .wh-controls input { width: 80px; }
 
-  /* ---------- ТОРГОВЦЫ ---------- */
   .trader-filters {
     display: flex;
     gap: 10px;
@@ -482,13 +502,15 @@
     .modal { padding: 18px; }
     .bank-total { font-size: 1.9rem; }
     .main-menu button { padding: 14px 18px; min-width: 100px; font-size: 0.9rem; }
+    .topbar { flex-direction: column; align-items: flex-start; }
+    .topbar .date-line { text-align: left; }
   }
 </style>
 </head>
 <body>
 
 <div class="topbar">
-  <div></div>
+  <div class="campaign-start" id="topbar-start">—</div>
   <div class="date-line" id="topbar-date">—</div>
 </div>
 
@@ -498,6 +520,7 @@
   <button data-modal="bank">Банк</button>
   <button data-modal="warehouse">Склад</button>
   <button data-modal="traders">Торговцы</button>
+  <button data-modal="missions">Миссии</button>
   <button data-modal="business">Бизнес</button>
 </div>
 
@@ -512,12 +535,10 @@
         <input type="text" id="member-name" placeholder="Имя персонажа или НИП">
       </div>
       <div class="field">
-        <label for="member-role">Должность</label>
-        <select id="member-role">
-          <option value="Управляющий">Управляющий</option>
+        <label for="member-type">Тип</label>
+        <select id="member-type">
           <option value="Игрок">Игрок</option>
-          <option value="Сотрудник">Сотрудник</option>
-          <option value="Наёмник">Наёмник</option>
+          <option value="НИП">НИП</option>
         </select>
       </div>
     </div>
@@ -635,7 +656,6 @@
   <div class="modal">
     <button class="modal-close" data-close>×</button>
     <h2>Склад гильдии</h2>
-
     <div class="section-title">Добавить предмет</div>
     <div class="row">
       <div class="field" style="grid-column: span 2;">
@@ -662,7 +682,6 @@
     </div>
     <button id="btn-add-item">Добавить</button>
     <div class="error" id="wh-error"></div>
-
     <div class="section-title">Содержимое склада</div>
     <div class="wh-filter">
       <label for="wh-filter">Фильтр:</label>
@@ -679,7 +698,6 @@
   <div class="modal">
     <button class="modal-close" data-close>×</button>
     <h2>Торговцы</h2>
-
     <div class="section-title">Добавить торговца</div>
     <div class="row">
       <div class="field">
@@ -702,7 +720,6 @@
     </div>
     <button id="btn-add-trader">Добавить</button>
     <div class="error" id="tr-error"></div>
-
     <div class="section-title">Список торговцев</div>
     <div class="trader-filters">
       <div class="field">
@@ -719,6 +736,15 @@
       </div>
     </div>
     <div id="tr-list"></div>
+  </div>
+</div>
+
+<!-- МИССИИ -->
+<div class="modal-overlay" id="modal-missions" style="display:none;">
+  <div class="modal">
+    <button class="modal-close" data-close>×</button>
+    <h2>Миссии</h2>
+    <div class="empty">Раздел в разработке 🛠️</div>
   </div>
 </div>
 
@@ -754,11 +780,14 @@ const TRADER_CATEGORIES = ['Оружейник', 'Бронник', 'Лекарь
                            'Ювелир', 'Алхимик', 'Торговец едой', 'Торговец снаряжением',
                            'Магический торговец', 'Прочее'];
 
+const CAMPAIGN_START = { year: 2926, month: 2, day: 19 };
+
 function defaultState() {
   return {
-    date: { year: 1852, month: 11, day: 27, hours: 12, minutes: 30 },
+    date: { year: 2926, month: 2, day: 19, hours: 12, minutes: 0 },
     members: [],
     accounts: {},
+    unallocatedFunds: 0,
     totals: { commonIncome: 0, commonExpense: 0 },
     history: [],
     expenses: [],
@@ -778,6 +807,7 @@ function loadState() {
     const s = JSON.parse(raw);
     if (!s.date || !Array.isArray(s.members)) return defaultState();
     if (!s.accounts) s.accounts = {};
+    if (typeof s.unallocatedFunds !== 'number') s.unallocatedFunds = 0;
     if (!s.totals) s.totals = { commonIncome: 0, commonExpense: 0 };
     if (!Array.isArray(s.history)) s.history = [];
     if (!Array.isArray(s.expenses)) s.expenses = [];
@@ -785,7 +815,16 @@ function loadState() {
     if (typeof s.expensesLastPaidAmount !== 'number') s.expensesLastPaidAmount = 0;
     if (!Array.isArray(s.warehouse)) s.warehouse = [];
     if (!Array.isArray(s.traders)) s.traders = [];
-    s.members.forEach(m => { if (typeof m.fired !== 'boolean') m.fired = false; });
+    s.members.forEach(m => {
+      if (typeof m.fired !== 'boolean') m.fired = false;
+      if (!m.type) m.type = 'Игрок';
+      if (!m.rank) m.rank = '';
+      if (!m.position) m.position = '';
+      if (!m.status) m.status = '';
+      if (!m.statusDate) m.statusDate = null;
+      if (!m.info) m.info = '';
+      if (!m.expanded) m.expanded = false;
+    });
     return s;
   } catch {
     return defaultState();
@@ -842,6 +881,13 @@ function weekdayIndex(date) {
 
 function daysInMonth(month) { return DAYS_IN_MONTH[month - 1]; }
 
+// Разница в днях между двумя датами (b - a)
+function daysBetween(a, b) {
+  // Приводим к «абсолютному дню» (грубая оценка, без учёта високосных)
+  const abs = d => d.year * 365 + (d.month - 1) * 31 + d.day;
+  return abs(b) - abs(a);
+}
+
 function addMinutes(date, minutes) {
   const d = { ...date };
   d.minutes += minutes;
@@ -870,6 +916,12 @@ function updateDateDisplay() {
   const formatted = formatDate(state.date);
   $('topbar-date').innerHTML = formatted;
   $('date-display-big').textContent = formatted;
+
+  // Старт кампании
+  const startStr = `${CAMPAIGN_START.day} ${MONTHS[CAMPAIGN_START.month - 1]}, ${CAMPAIGN_START.year} года`;
+  const passed = daysBetween(CAMPAIGN_START, state.date);
+  const passedStr = passed >= 0 ? passed : 0;
+  $('topbar-start').innerHTML = `Старт кампании: <strong>${startStr}</strong>. Прошло <strong>${passedStr}</strong> дн.`;
 }
 
 /* ============================================================
@@ -978,16 +1030,8 @@ function renderHistory() {
    СОСТАВ
    ============================================================ */
 
-const ROLE_ORDER = ['Управляющий', 'Игрок', 'Сотрудник', 'Наёмник'];
-const ROLE_CLASS = {
-  'Управляющий': 'role-manager',
-  'Игрок': 'role-player',
-  'Сотрудник': 'role-employee',
-  'Наёмник': 'role-merc'
-};
-
 function getPlayers() {
-  return state.members.filter(m => m.role === 'Игрок' && !m.fired);
+  return state.members.filter(m => m.type === 'Игрок' && !m.fired);
 }
 
 function renderMembers() {
@@ -996,14 +1040,38 @@ function renderMembers() {
     list.innerHTML = '<div class="empty">Пока никого нет</div>';
     return;
   }
+  // Сортировка: сначала активные, потом уволенные; внутри — по имени
   const sorted = [...state.members].sort((a, b) => {
     if (a.fired !== b.fired) return a.fired ? 1 : -1;
-    return ROLE_ORDER.indexOf(a.role) - ROLE_ORDER.indexOf(b.role);
+    return a.name.localeCompare(b.name);
   });
+
   list.innerHTML = '';
   sorted.forEach(m => {
-    const row = document.createElement('div');
-    row.className = 'member-row' + (m.fired ? ' fired' : '');
+    const card = document.createElement('div');
+    card.className = 'member-card' + (m.fired ? ' fired' : '');
+
+    // Заголовок
+    const roleLabel = m.fired ? 'Уволен' : m.type;
+    const titles = [];
+    if (m.rank) titles.push(`Звание: ${escapeHtml(m.rank)}`);
+    if (m.position) titles.push(`Должность: ${escapeHtml(m.position)}`);
+
+    // Статус
+    let statusHtml = '';
+    if (m.status && m.statusDate) {
+      const diff = daysBetween(m.statusDate, state.date);
+      const diffAbs = Math.abs(diff);
+      if (diff >= 0) {
+        statusHtml = `<div class="mc-status past">${escapeHtml(m.status)} — ${diffAbs} дн. назад</div>`;
+      } else {
+        statusHtml = `<div class="mc-status future">${escapeHtml(m.status)} — через ${diffAbs} дн.</div>`;
+      }
+    } else if (m.status) {
+      statusHtml = `<div class="mc-status">${escapeHtml(m.status)}</div>`;
+    }
+
+    // Кнопки
     let btns = '';
     if (m.fired) {
       btns = `<button class="success-btn small" data-hire="${m.id}">Нанять</button>
@@ -1011,15 +1079,102 @@ function renderMembers() {
     } else {
       btns = `<button class="danger small" data-fire="${m.id}">Уволить</button>`;
     }
-    row.innerHTML = `
-      <div>
-        <span class="member-name">${escapeHtml(m.name)}</span>
-        <span class="member-role ${ROLE_CLASS[m.role] || ''}">${m.role}</span>
+
+    const arrow = m.expanded ? '▲' : '▼';
+
+    card.innerHTML = `
+      <div class="mc-head" data-toggle="${m.id}">
+        <div>
+          <span class="mc-name">${escapeHtml(m.name)}</span>
+          <span class="mc-role ${m.type === 'Игрок' ? 'player' : 'npc'}">${roleLabel}</span>
+          ${titles.length ? `<div class="mc-titles">${titles.join('')}</div>` : ''}
+          ${statusHtml}
+        </div>
+        <span class="mc-arrow">${arrow}</span>
       </div>
-      <div style="display:flex; gap:6px;">${btns}</div>
+      <div class="mc-body ${m.expanded ? 'open' : ''}" id="body-${m.id}">
+        <div class="row">
+          <div class="field">
+            <label>Звание</label>
+            <input type="text" data-field="rank" data-id="${m.id}" value="${escapeAttr(m.rank)}" placeholder="Например, Капитан">
+          </div>
+          <div class="field">
+            <label>Должность</label>
+            <input type="text" data-field="position" data-id="${m.id}" value="${escapeAttr(m.position)}" placeholder="Например, Управляющий">
+          </div>
+        </div>
+        <div class="row">
+          <div class="field" style="grid-column: span 2;">
+            <label>Статус</label>
+            <input type="text" data-field="status" data-id="${m.id}" value="${escapeAttr(m.status)}" placeholder="Например, Пропал">
+          </div>
+          <div class="field">
+            <label>Год</label>
+            <input type="number" data-field="statusYear" data-id="${m.id}" value="${m.statusDate ? m.statusDate.year : ''}" min="1" placeholder="2926">
+          </div>
+          <div class="field">
+            <label>Месяц</label>
+            <select data-field="statusMonth" data-id="${m.id}">
+              <option value="">—</option>
+              ${MONTHS.map((mn, i) => `<option value="${i+1}" ${m.statusDate && m.statusDate.month === i+1 ? 'selected' : ''}>${mn}</option>`).join('')}
+            </select>
+          </div>
+          <div class="field">
+            <label>День</label>
+            <input type="number" data-field="statusDay" data-id="${m.id}" value="${m.statusDate ? m.statusDate.day : ''}" min="1" max="31" placeholder="19">
+          </div>
+        </div>
+        <div class="field" style="margin-top: 10px;">
+          <label>Краткая информация</label>
+          <textarea data-field="info" data-id="${m.id}" placeholder="Возраст, происхождение, особенности...">${escapeHtml(m.info)}</textarea>
+        </div>
+        <div style="display:flex; gap:8px; margin-top:12px; flex-wrap:wrap;">
+          <button class="small" data-save="${m.id}">Сохранить</button>
+          ${m.fired
+            ? `<button class="success-btn small" data-hire="${m.id}">Нанять</button>
+               <button class="danger small" data-delete="${m.id}">Удалить</button>`
+            : `<button class="danger small" data-fire="${m.id}">Уволить</button>`}
+        </div>
+      </div>
     `;
-    list.appendChild(row);
+    list.appendChild(card);
   });
+
+  // Обработчики
+  list.querySelectorAll('[data-toggle]').forEach(el => {
+    el.addEventListener('click', (e) => {
+      // Не переключать, если клик по кнопке
+      if (e.target.closest('button')) return;
+      const m = state.members.find(x => x.id === el.dataset.toggle);
+      if (!m) return;
+      m.expanded = !m.expanded;
+      saveState();
+      renderMembers();
+    });
+  });
+
+  list.querySelectorAll('[data-save]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const id = btn.dataset.save;
+      const m = state.members.find(x => x.id === id);
+      if (!m) return;
+      m.rank = list.querySelector(`[data-field="rank"][data-id="${cssEscape(id)}"]`).value.trim();
+      m.position = list.querySelector(`[data-field="position"][data-id="${cssEscape(id)}"]`).value.trim();
+      m.status = list.querySelector(`[data-field="status"][data-id="${cssEscape(id)}"]`).value.trim();
+      m.info = list.querySelector(`[data-field="info"][data-id="${cssEscape(id)}"]`).value;
+      const y = parseInt(list.querySelector(`[data-field="statusYear"][data-id="${cssEscape(id)}"]`).value, 10);
+      const mo = parseInt(list.querySelector(`[data-field="statusMonth"][data-id="${cssEscape(id)}"]`).value, 10);
+      const d = parseInt(list.querySelector(`[data-field="statusDay"][data-id="${cssEscape(id)}"]`).value, 10);
+      if (y && mo && d) {
+        m.statusDate = { year: y, month: mo, day: d };
+      } else {
+        m.statusDate = null;
+      }
+      saveState();
+      renderMembers();
+    });
+  });
+
   list.querySelectorAll('[data-fire]').forEach(btn => {
     btn.addEventListener('click', () => fireMember(btn.dataset.fire));
   });
@@ -1031,14 +1186,14 @@ function renderMembers() {
   });
 }
 
-function addMember(name, role) {
+function addMember(name, type) {
   name = name.trim();
   if (!name) { showError('members-error', 'Введите имя'); return; }
   const existing = state.members.find(m => m.name.toLowerCase() === name.toLowerCase());
   if (existing) {
     if (existing.fired) {
       existing.fired = false;
-      existing.role = role;
+      existing.type = type;
       saveState();
       showError('members-error', '');
       $('member-name').value = '';
@@ -1049,8 +1204,12 @@ function addMember(name, role) {
     showError('members-error', 'Персонаж с таким именем уже есть');
     return;
   }
-  state.members.push({ id: Date.now() + '_' + Math.random().toString(36).slice(2, 7), name, role, fired: false });
-  if (role === 'Игрок') ensureAccount(name);
+  state.members.push({
+    id: Date.now() + '_' + Math.random().toString(36).slice(2, 7),
+    name, type, fired: false,
+    rank: '', position: '', status: '', statusDate: null, info: '', expanded: false
+  });
+  if (type === 'Игрок') ensureAccount(name);
   saveState();
   showError('members-error', '');
   $('member-name').value = '';
@@ -1067,7 +1226,7 @@ async function fireMember(id) {
   const ok = await showConfirm(`Уволить сотрудника «${m.name}»?`);
   if (!ok) return;
 
-  if (m.role === 'Игрок' && balance !== 0) {
+  if (m.type === 'Игрок' && balance !== 0) {
     const give = await showConfirm(`У сотрудника вклад в банке: ${formatMoney(balance)}. Выдать?`);
     if (give) {
       ensureAccount(m.name).personalIn -= balance;
@@ -1085,7 +1244,7 @@ function hireMember(id) {
   const m = state.members.find(x => x.id === id);
   if (!m) return;
   m.fired = false;
-  if (m.role === 'Игрок') ensureAccount(m.name);
+  if (m.type === 'Игрок') ensureAccount(m.name);
   saveState();
   renderMembers();
   renderBank();
@@ -1120,7 +1279,7 @@ function getTotalAccounts() {
 }
 
 function getBankTotal() {
-  return getTotalAccounts();
+  return roundTenths(getTotalAccounts() + (state.unallocatedFunds || 0));
 }
 
 function getPositiveTotal() {
@@ -1142,7 +1301,7 @@ function renderBank() {
   renderExpenseInfo();
 
   const names = new Set();
-  state.members.forEach(m => { if (m.role === 'Игрок') names.add(m.name); });
+  state.members.forEach(m => { if (m.type === 'Игрок') names.add(m.name); });
   Object.keys(state.accounts).forEach(n => names.add(n));
 
   const container = $('bank-players');
@@ -1269,9 +1428,14 @@ function commonIncome(amount) {
   if (amount <= 0) { showError('bank-error', 'Сумма должна быть > 0'); return; }
 
   const per = floorTenths(amount / players.length);
+  const distributed = roundTenths(per * players.length);
+  const remainder = roundTenths(amount - distributed);
+
   players.forEach(p => {
     ensureAccount(p.name).commonShare += per;
   });
+  // Остаток идёт в «нераспределённые средства», чтобы банк вырос на полную сумму
+  state.unallocatedFunds = roundTenths((state.unallocatedFunds || 0) + remainder);
   state.totals.commonIncome = roundTenths(state.totals.commonIncome + amount);
   logHistory(`Гильдия пополнила счёт на ${formatMoney(amount)}`);
   saveState();
@@ -1297,9 +1461,10 @@ function commonExpense(amount) {
 }
 
 async function resetBank() {
-  const ok = await showConfirm('Сбросить банк полностью? Все счета (включая удалённых вкладчиков), долги, общие суммы и история операций будут стёрты. Состав гильдии останется.');
+  const ok = await showConfirm('Сбросить банк полностью? Все счета, долги, общие суммы и история операций будут стёрты. Состав гильдии останется.');
   if (!ok) return;
   state.accounts = {};
+  state.unallocatedFunds = 0;
   getPlayers().forEach(p => ensureAccount(p.name));
   state.totals = { commonIncome: 0, commonExpense: 0 };
   state.history = [];
@@ -1611,7 +1776,6 @@ function renderTraders() {
   const filterCity = $('tr-filter-city').value;
   const filterCat = $('tr-filter-category').value;
 
-  // Обновляем datalist городов
   updateCityDatalist();
 
   let items = state.traders.slice();
@@ -1624,7 +1788,6 @@ function renderTraders() {
     return;
   }
 
-  // Группировка по городам
   const byCity = {};
   items.forEach(t => {
     if (!byCity[t.city]) byCity[t.city] = [];
@@ -1706,7 +1869,6 @@ function updateCityDatalist() {
     `<option value="${escapeAttr(c)}"></option>`
   ).join('');
 
-  // Обновляем фильтр городов
   const filterCity = $('tr-filter-city');
   const current = filterCity.value;
   filterCity.innerHTML = '<option value="all">Все города</option>';
@@ -1793,7 +1955,7 @@ document.querySelectorAll('.modal-overlay').forEach(overlay => {
    ============================================================ */
 
 $('btn-add-member').addEventListener('click', () => {
-  addMember($('member-name').value, $('member-role').value);
+  addMember($('member-name').value, $('member-type').value);
 });
 
 $('member-name').addEventListener('keydown', e => {
