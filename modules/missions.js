@@ -240,7 +240,10 @@ export function addMission() {
 
   if (!goal) { if (errEl) errEl.textContent = 'Введите цель'; return; }
   if (isNaN(reward) || reward < 0) { if (errEl) errEl.textContent = 'Введите награду'; return; }
-  const totalHours = days * 24 + hours;
+
+  // ВАЖНО: hours уже пересчитано из days (или введено вручную).
+  // Не прибавляем days * 24, чтобы не удваивать.
+  const totalHours = hours;
   if (totalHours <= 0) { if (errEl) errEl.textContent = 'Укажите срок'; return; }
   if (type === 'Личное' && !issuer) { if (errEl) errEl.textContent = 'Укажите, кто выдал'; return; }
 
@@ -383,14 +386,16 @@ export function initMissionsHandlers() {
   });
 
   // Пересчёт дни ↔ часы
+  // При вводе дней — пересчитываем часы
   $('mission-days').addEventListener('input', () => {
-    const days = parseInt($('mission-days').value, 10);
+    const days = parseFloat($('mission-days').value);
     if (!isNaN(days) && days >= 0) {
-      $('mission-hours').value = days * 24;
+      $('mission-hours').value = Math.round(days * 24);
     }
   });
+  // При вводе часов — пересчитываем дни
   $('mission-hours').addEventListener('input', () => {
-    const hours = parseInt($('mission-hours').value, 10);
+    const hours = parseFloat($('mission-hours').value);
     if (!isNaN(hours) && hours >= 0) {
       const days = Math.round((hours / 24) * 10) / 10;
       $('mission-days').value = days;
