@@ -46,7 +46,8 @@ function defaultState() {
     expensesLastPaidMonth: null,
     expensesLastPaidAmount: 0,
     warehouse: [],
-    traders: []
+    traders: [],
+    missions: []
   };
 }
 
@@ -65,6 +66,7 @@ export function loadState() {
     if (typeof s.expensesLastPaidAmount !== 'number') s.expensesLastPaidAmount = 0;
     if (!Array.isArray(s.warehouse)) s.warehouse = [];
     if (!Array.isArray(s.traders)) s.traders = [];
+    if (!Array.isArray(s.missions)) s.missions = [];
     s.members.forEach(m => {
       if (typeof m.fired !== 'boolean') m.fired = false;
       if (!m.type) m.type = 'Игрок';
@@ -75,7 +77,6 @@ export function loadState() {
       if (!Array.isArray(m.classes)) m.classes = [];
       if (typeof m.level !== 'number') m.level = 1;
       if (!m.species) m.species = '';
-      // Убираем устаревшие поля статуса
       delete m.status;
       delete m.statusDate;
     });
