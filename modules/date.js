@@ -1,6 +1,5 @@
 /* ============================================================
    DATE.JS — Логика даты и времени
-   Форматирование, подсчёт дней, кнопки отдыха, ручная установка
    ============================================================ */
 
 import {
@@ -20,7 +19,6 @@ export function formatDate(date) {
   return `${wd}, ${date.day} ${month}, ${date.year} год. ${hh}:${mm}`;
 }
 
-// Индекс дня недели (0 = Воскресенье) по формуле Зеллера
 export function weekdayIndex(date) {
   let y = date.year, m = date.month;
   const d = date.day;
@@ -38,10 +36,9 @@ export function daysInMonth(month) {
 }
 
 /* ============================================================
-   ТОЧНЫЙ ПОДСЧЁТ ДНЕЙ (с учётом реальных дней в месяцах)
+   ТОЧНЫЙ ПОДСЧЁТ ДНЕЙ
    ============================================================ */
 
-// «Абсолютный день» от 1 января 1 года
 export function absoluteDay(d) {
   let days = (d.year - 1) * 365;
   for (let m = 1; m < d.month; m++) days += daysInMonth(m);
@@ -49,7 +46,6 @@ export function absoluteDay(d) {
   return days;
 }
 
-// Разница в днях: b - a
 export function daysBetween(a, b) {
   return absoluteDay(b) - absoluteDay(a);
 }
@@ -110,7 +106,7 @@ export function fillDateInputs() {
 }
 
 /* ============================================================
-   ИНИЦИАЛИЗАЦИЯ ВЫПАДАЮЩИХ СПИСКОВ (месяцы и время)
+   ИНИЦИАЛИЗАЦИЯ ВЫПАДАЮЩИХ СПИСКОВ
    ============================================================ */
 
 export function initDateSelects() {
@@ -143,41 +139,30 @@ export function initDateSelects() {
    ============================================================ */
 
 export function initDateHandlers() {
-  // Короткий отдых (+1 час)
   $('btn-short-rest').addEventListener('click', () => {
     state.date = addMinutes(state.date, 60);
     persist();
     updateDateDisplay();
     fillDateInputs();
-    // Обновляем счётчик расходов, если он есть
-    if (typeof window.__renderExpenseInfo === 'function') {
-      window.__renderExpenseInfo();
-    }
+    if (typeof window.__renderExpenseInfo === 'function') window.__renderExpenseInfo();
   });
 
-  // Длительный отдых (+8 часов)
   $('btn-long-rest').addEventListener('click', () => {
     state.date = addMinutes(state.date, 8 * 60);
     persist();
     updateDateDisplay();
     fillDateInputs();
-    if (typeof window.__renderExpenseInfo === 'function') {
-      window.__renderExpenseInfo();
-    }
+    if (typeof window.__renderExpenseInfo === 'function') window.__renderExpenseInfo();
   });
 
-  // Следующий день (07:00)
   $('btn-next-day').addEventListener('click', () => {
     state.date = nextDayMorning(state.date);
     persist();
     updateDateDisplay();
     fillDateInputs();
-    if (typeof window.__renderExpenseInfo === 'function') {
-      window.__renderExpenseInfo();
-    }
+    if (typeof window.__renderExpenseInfo === 'function') window.__renderExpenseInfo();
   });
 
-  // Установить вручную
   $('btn-set-date').addEventListener('click', () => {
     const errEl = $('date-error');
     if (errEl) errEl.textContent = '';
@@ -205,8 +190,6 @@ export function initDateHandlers() {
     persist();
     updateDateDisplay();
     fillDateInputs();
-    if (typeof window.__renderExpenseInfo === 'function') {
-      window.__renderExpenseInfo();
-    }
+    if (typeof window.__renderExpenseInfo === 'function') window.__renderExpenseInfo();
   });
 }
