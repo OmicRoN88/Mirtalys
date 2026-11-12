@@ -1,5 +1,6 @@
 /* ============================================================
    DATE.JS — Логика даты и времени
+   Все месяцы по 30 дней, 360 дней в году
    ============================================================ */
 
 import {
@@ -31,19 +32,17 @@ export function weekdayIndex(date) {
   return map[h];
 }
 
+// Всегда 30 (для совместимости с bank.js, который вызывает daysInMonth)
 export function daysInMonth(month) {
-  return DAYS_IN_MONTH[month - 1];
+  return 30;
 }
 
 /* ============================================================
-   ТОЧНЫЙ ПОДСЧЁТ ДНЕЙ
+   ТОЧНЫЙ ПОДСЧЁТ ДНЕЙ (30-дневные месяцы)
    ============================================================ */
 
 export function absoluteDay(d) {
-  let days = (d.year - 1) * 365;
-  for (let m = 1; m < d.month; m++) days += daysInMonth(m);
-  days += d.day - 1;
-  return days;
+  return (d.year - 1) * 360 + (d.month - 1) * 30 + (d.day - 1);
 }
 
 export function daysBetween(a, b) {
@@ -59,8 +58,8 @@ export function addMinutes(date, minutes) {
   d.minutes += minutes;
   while (d.minutes >= 60) { d.minutes -= 60; d.hours += 1; }
   while (d.hours >= 24) { d.hours -= 24; d.day += 1; }
-  while (d.day > daysInMonth(d.month)) {
-    d.day -= daysInMonth(d.month);
+  while (d.day > 30) {
+    d.day -= 30;
     d.month += 1;
     if (d.month > 12) { d.month = 1; d.year += 1; }
   }
@@ -70,7 +69,7 @@ export function addMinutes(date, minutes) {
 export function nextDayMorning(date) {
   const d = { ...date };
   d.day += 1;
-  if (d.day > daysInMonth(d.month)) {
+  if (d.day > 30) {
     d.day = 1; d.month += 1;
     if (d.month > 12) { d.month = 1; d.year += 1; }
   }
@@ -194,9 +193,8 @@ export function initDateHandlers() {
       if (errEl) errEl.textContent = 'Месяц от 1 до 12';
       return;
     }
-    const maxDay = daysInMonth(month);
-    if (!Number.isInteger(day) || day < 1 || day > maxDay) {
-      if (errEl) errEl.textContent = `В этом месяце ${maxDay} дней`;
+    if (!Number.isInteger(day) || day < 1 || day > 30) {
+      if (errEl) errEl.textContent = 'День должен быть от 1 до 30';
       return;
     }
     state.date = { year, month, day, hours: hh, minutes: mm };
