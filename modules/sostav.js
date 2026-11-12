@@ -28,7 +28,8 @@ function buildMemberSubtitle(m) {
   if (m.species) parts.push(m.species);
 
   if (m.classes && m.classes.length) {
-    parts.push(m.classes.join('/'));
+    const cls = m.classes.filter(c => c && c.trim());
+    if (cls.length) parts.push(cls.join('/'));
   }
 
   if (m.level) {
@@ -38,6 +39,29 @@ function buildMemberSubtitle(m) {
   if (m.position) parts.push(`Профессия: ${m.position}`);
 
   return parts.join('. ');
+}
+
+// Считывает поля карточки из DOM в объект m
+function saveMemberFieldsFromDOM(list, m, id) {
+  const rankEl = list.querySelector(`[data-field="rank"][data-id="${cssEscape(id)}"]`);
+  const posEl = list.querySelector(`[data-field="position"][data-id="${cssEscape(id)}"]`);
+  const speciesEl = list.querySelector(`[data-field="species"][data-id="${cssEscape(id)}"]`);
+  const infoEl = list.querySelector(`[data-field="info"][data-id="${cssEscape(id)}"]`);
+  const levelEl = list.querySelector(`[data-field="level"][data-id="${cssEscape(id)}"]`);
+  const c1El = list.querySelector(`[data-field="class1"][data-id="${cssEscape(id)}"]`);
+  const c2El = list.querySelector(`[data-field="class2"][data-id="${cssEscape(id)}"]`);
+
+  if (rankEl) m.rank = rankEl.value.trim();
+  if (posEl) m.position = posEl.value.trim();
+  if (speciesEl) m.species = speciesEl.value.trim();
+  if (infoEl) m.info = infoEl.value;
+  if (levelEl) {
+    const lvl = parseInt(levelEl.value, 10);
+    m.level = isNaN(lvl) ? 1 : lvl;
+  }
+  if (!Array.isArray(m.classes)) m.classes = [];
+  if (c1El) m.classes[0] = c1El.value || '';
+  if (c2El) m.classes[1] = c2El.value || '';
 }
 
 /* ============================================================
@@ -70,11 +94,9 @@ export function renderMembers() {
 
     const arrow = m.expanded ? '▲' : '▼';
 
-    // Классы
     const c1 = (m.classes && m.classes[0]) ? m.classes[0] : '';
     const c2 = (m.classes && m.classes[1]) ? m.classes[1] : '';
 
-    // Опции для селектов классов
     const classOptions1 = DND_CLASSES.map(c =>
       `<option value="${escapeAttr(c)}" ${c === c1 ? 'selected' : ''}>${escapeHtml(c)}</option>`
     ).join('');
@@ -83,7 +105,6 @@ export function renderMembers() {
       `<option value="${escapeAttr(c)}" ${c === c2 ? 'selected' : ''}>${escapeHtml(c)}</option>`
     ).join('');
 
-    // Опции для уровня
     const levelOptions = DND_LEVELS.map(l =>
       `<option value="${l}" ${l === m.level ? 'selected' : ''}>${l}</option>`
     ).join('');
@@ -178,12 +199,15 @@ export function renderMembers() {
       const id = btn.dataset.addClass;
       const m = state.members.find(x => x.id === id);
       if (!m) return;
+
+      saveMemberFieldsFromDOM(list, m, id);
+
       if (!Array.isArray(m.classes)) m.classes = [];
       if (m.classes.length < 2) {
         m.classes[1] = '';
-        persist();
-        renderMembers();
       }
+      persist();
+      renderMembers();
     });
   });
 
@@ -193,11 +217,14 @@ export function renderMembers() {
       const id = btn.dataset.removeClass;
       const m = state.members.find(x => x.id === id);
       if (!m) return;
+
+      saveMemberFieldsFromDOM(list, m, id);
+
       if (Array.isArray(m.classes) && m.classes.length > 1) {
         m.classes = [m.classes[0]];
-        persist();
-        renderMembers();
       }
+      persist();
+      renderMembers();
     });
   });
 
@@ -208,23 +235,13 @@ export function renderMembers() {
       const m = state.members.find(x => x.id === id);
       if (!m) return;
 
-      m.rank = list.querySelector(`[data-field="rank"][data-id="${cssEscape(id)}"]`).value.trim();
-      m.position = list.querySelector(`[data-field="position"][data-id="${cssEscape(id)}"]`).value.trim();
-      m.species = list.querySelector(`[data-field="species"][data-id="${cssEscape(id)}"]`).value.trim();
-      m.info = list.querySelector(`[data-field="info"][data-id="${cssEscape(id)}"]`).value;
+      saveMemberFieldsFromDOM(list, m, id);
 
-      // Уровень
-      const lvl = parseInt(list.querySelector(`[data-field="level"][data-id="${cssEscape(id)}"]`).value, 10);
-      m.level = isNaN(lvl) ? 1 : lvl;
-
-      // Классы
-      const c1El = list.querySelector(`[data-field="class1"][data-id="${cssEscape(id)}"]`);
-      const c2El = list.querySelector(`[data-field="class2"][data-id="${cssEscape(id)}"]`);
-      const c1 = c1El ? c1El.value : '';
-      const c2 = c2El ? c2El.value : '';
-      m.classes = [];
-      if (c1) m.classes.push(c1);
-      if (c2 && c2 !== c1) m.classes.push(c2);
+      // Фильтруем пустые классы и дубликаты
+      m.classes = m.classes.filter(c => c && c.trim());
+      if (m.classes.length > 1 && m.classes[0] === m.classes[1]) {
+        m.classes = [m.classes[0]];
+      }
 
       persist();
       renderMembers();
