@@ -40,7 +40,6 @@ export function cssEscape(s) {
 }
 
 // ---------- СОСТОЯНИЕ ----------
-// Начальное состояние (используется, если в localStorage ничего нет)
 function defaultState() {
   return {
     date: { year: 2926, month: 2, day: 19, hours: 12, minutes: 0 },
@@ -57,14 +56,12 @@ function defaultState() {
   };
 }
 
-// Загрузка состояния из localStorage
 export function loadState() {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return defaultState();
     const s = JSON.parse(raw);
     if (!s.date || !Array.isArray(s.members)) return defaultState();
-    // Восстановление отсутствующих полей (для совместимости со старыми данными)
     if (!s.accounts) s.accounts = {};
     if (typeof s.unallocatedFunds !== 'number') s.unallocatedFunds = 0;
     if (!s.totals) s.totals = { commonIncome: 0, commonExpense: 0 };
@@ -74,7 +71,6 @@ export function loadState() {
     if (typeof s.expensesLastPaidAmount !== 'number') s.expensesLastPaidAmount = 0;
     if (!Array.isArray(s.warehouse)) s.warehouse = [];
     if (!Array.isArray(s.traders)) s.traders = [];
-    // Миграция участников
     s.members.forEach(m => {
       if (typeof m.fired !== 'boolean') m.fired = false;
       if (!m.type) m.type = 'Игрок';
@@ -91,16 +87,13 @@ export function loadState() {
   }
 }
 
-// Сохранение состояния в localStorage
 export function saveState(state) {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
 }
 
 // ---------- ГЛОБАЛЬНОЕ СОСТОЯНИЕ ----------
-// Создаём и загружаем состояние один раз при импорте
 export let state = loadState();
 
-// Функция для принудительного сохранения (чтобы модули не импортировали saveState отдельно)
 export function persist() {
   saveState(state);
 }
@@ -113,7 +106,7 @@ export function ensureAccount(name) {
   return state.accounts[name];
 }
 
-// ---------- КОНСТАНТЫ (общие для всех модулей) ----------
+// ---------- КОНСТАНТЫ ----------
 export const MONTHS = ['января','февраля','марта','апреля','мая','июня',
                        'июля','августа','сентября','октября','ноября','декабря'];
 export const WEEKDAYS = ['Воскресенье','Понедельник','Вторник','Среда',
