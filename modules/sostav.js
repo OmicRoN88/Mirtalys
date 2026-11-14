@@ -67,7 +67,6 @@ export function renderMembers() {
 
     const roleLabel = m.fired ? 'Уволен' : m.type;
     const subtitle = buildMemberSubtitle(m);
-    const isNPC = m.type === 'НИП';
     const arrow = m.expanded ? '▲' : '▼';
 
     const expandedPart = m.expanded ? `
@@ -77,10 +76,7 @@ export function renderMembers() {
       </div>
       <div class="actions" style="margin-top: 12px;">
         <button class="small success-btn" data-open-card="${m.id}">Карточка</button>
-        ${m.fired
-          ? `<button class="success-btn small" data-hire="${m.id}">Нанять</button>
-             <button class="danger small" data-delete="${m.id}">Удалить</button>`
-          : `<button class="danger small" data-fire="${m.id}">Уволить</button>`}
+        <button class="danger small" data-fire="${m.id}">Уволить</button>
       </div>
     ` : '';
 
@@ -100,7 +96,6 @@ export function renderMembers() {
     list.appendChild(card);
   });
 
-  // Раскрытие
   list.querySelectorAll('[data-toggle]').forEach(el => {
     el.addEventListener('click', (e) => {
       if (e.target.closest('button')) return;
@@ -112,26 +107,48 @@ export function renderMembers() {
     });
   });
 
-  // Открыть карточку
   list.querySelectorAll('[data-open-card]').forEach(el => {
     el.addEventListener('click', () => openCharacterCard(el.dataset.openCard));
   });
 
-  // Уволить/Нанять/Удалить
   list.querySelectorAll('[data-fire]').forEach(el => {
     el.addEventListener('click', () => fireMember(el.dataset.fire));
-  });
-  list.querySelectorAll('[data-hire]').forEach(el => {
-    el.addEventListener('click', () => hireMember(el.dataset.hire));
-  });
-  list.querySelectorAll('[data-delete]').forEach(el => {
-    el.addEventListener('click', () => deleteMember(el.dataset.delete));
   });
 }
 
 /* ============================================================
-   КАРТОЧКА ПЕРСОНАЖА (модалка)
+   КАРТОЧКА ПЕРСОНАЖА
    ============================================================ */
+
+function fillClassSelects(prefix) {
+  const classSel = $(prefix + '-class');
+  const class2Sel = $(prefix + '-class2');
+  if (classSel && classSel.options.length === 0) {
+    DND_CLASSES.forEach(c => {
+      const opt = document.createElement('option');
+      opt.value = c;
+      opt.textContent = c;
+      classSel.appendChild(opt);
+    });
+  }
+  if (class2Sel && class2Sel.options.length === 0) {
+    DND_CLASSES.forEach(c => {
+      const opt = document.createElement('option');
+      opt.value = c;
+      opt.textContent = c;
+      class2Sel.appendChild(opt);
+    });
+  }
+  const levelSel = $(prefix + '-level');
+  if (levelSel && levelSel.options.length === 0) {
+    DND_LEVELS.forEach(l => {
+      const opt = document.createElement('option');
+      opt.value = l;
+      opt.textContent = l;
+      levelSel.appendChild(opt);
+    });
+  }
+}
 
 function openCharacterCard(id) {
   const m = state.members.find(x => x.id === id);
@@ -140,25 +157,7 @@ function openCharacterCard(id) {
   const modal = $('modal-character-card');
   if (!modal) return;
 
-  // Заполняем селекты классов и уровней, если пусты
-  const levelSel = $('cc-level');
-  if (levelSel.options.length === 0) {
-    DND_LEVELS.forEach(l => {
-      const opt = document.createElement('option');
-      opt.value = l;
-      opt.textContent = l;
-      levelSel.appendChild(opt);
-    });
-  }
-  const classSel = $('cc-class');
-  if (classSel.options.length === 0) {
-    DND_CLASSES.forEach(c => {
-      const opt = document.createElement('option');
-      opt.value = c;
-      opt.textContent = c;
-      classSel.appendChild(opt);
-    });
-  }
+  fillClassSelects('cc');
 
   $('cc-id').value = m.id;
   $('cc-name').value = m.name;
@@ -166,7 +165,15 @@ function openCharacterCard(id) {
   $('cc-position').value = m.position || '';
   $('cc-level').value = m.level || 1;
   $('cc-class').value = (m.classes && m.classes[0]) ? m.classes[0] : DND_CLASSES[0];
-  $('cc-hp').value = m.hp || 0;
+  const c2 = (m.classes && m.classes[1]) ? m.classes[1] : '';
+  if (c2) {
+    $('cc-class2').value = c2;
+    $('cc-class2-wrapper').style.display = 'flex';
+    $('cc-add-class').style.display = 'none';
+  } else {
+    $('cc-class2-wrapper').style.display = 'none';
+    $('cc-add-class').style.display = 'inline-flex';
+  }
   $('cc-maxhp').value = m.maxHp || 10;
   $('cc-ac').value = m.ac || 10;
   $('cc-passive').value = m.passivePerception || 10;
@@ -192,7 +199,6 @@ function saveCharacterCard() {
   if (newName !== m.name) {
     const dup = state.members.find(x => x.id !== id && x.name.toLowerCase() === newName.toLowerCase());
     if (dup) { if (errEl) errEl.textContent = 'Персонаж с таким именем уже есть'; return; }
-    // Перенос счёта, если Игрок
     if (m.type === 'Игрок') {
       if (state.accounts[m.name]) {
         state.accounts[newName] = state.accounts[m.name];
@@ -207,11 +213,14 @@ function saveCharacterCard() {
   m.species = $('cc-species').value.trim();
   m.position = $('cc-position').value.trim();
   m.level = parseInt($('cc-level').value, 10) || 1;
-  const cls = $('cc-class').value;
-  m.classes = cls ? [cls] : [];
-  m.hp = parseInt($('cc-hp').value, 10) || 0;
+  const cls1 = $('cc-class').value;
+  const cls2Visible = $('cc-class2-wrapper').style.display !== 'none';
+  const cls2 = cls2Visible ? $('cc-class2').value : '';
+  m.classes = [];
+  if (cls1) m.classes.push(cls1);
+  if (cls2 && cls2 !== cls1) m.classes.push(cls2);
   m.maxHp = parseInt($('cc-maxhp').value, 10) || 10;
-  if (m.hp > m.maxHp) m.hp = m.maxHp;
+  m.hp = m.maxHp;
   m.ac = parseInt($('cc-ac').value, 10) || 10;
   m.passivePerception = parseInt($('cc-passive').value, 10) || 10;
   m.weight = parseInt($('cc-weight').value, 10) || 0;
@@ -233,7 +242,7 @@ export function addNPC() {
   state.members.push({
     id, name: 'Новый НИП',
     type: 'НИП', fired: false,
-    rank: '', position: '', info: '', expanded: true,
+    rank: '', position: '', info: '', expanded: false,
     species: '', classes: [],
     level: getMaxPlayerLevel(),
     hp: 10, maxHp: 10, ac: 10, passivePerception: 10, weight: 0
@@ -244,13 +253,12 @@ export function addNPC() {
 }
 
 /* ============================================================
-   УВОЛЬНЕНИЕ / ВОССТАНОВЛЕНИЕ / УДАЛЕНИЕ
+   УВОЛЬНЕНИЕ = полное удаление
    ============================================================ */
 
-export async function fireMember(id) {
-  const idx = state.members.findIndex(m => m.id === id);
-  if (idx === -1) return;
-  const m = state.members[idx];
+async function fireMember(id) {
+  const m = state.members.find(x => x.id === id);
+  if (!m) return;
 
   let balance = 0;
   if (state.accounts[m.name]) {
@@ -258,7 +266,7 @@ export async function fireMember(id) {
     balance = a.personalIn - a.personalOut + a.commonShare - a.commonExpenseShare;
   }
 
-  const ok = await showConfirm(`Уволить сотрудника «${m.name}»?`);
+  const ok = await showConfirm(`Уволить и удалить «${m.name}»?`);
   if (!ok) return;
 
   if (m.type === 'Игрок' && balance !== 0) {
@@ -266,29 +274,6 @@ export async function fireMember(id) {
     if (give) ensureAccount(m.name).personalIn -= balance;
   }
 
-  m.fired = true;
-  persist();
-  renderMembers();
-  if (typeof window.__renderBank === 'function') window.__renderBank();
-  if (typeof window.__renderHeader === 'function') window.__renderHeader();
-}
-
-export function hireMember(id) {
-  const m = state.members.find(x => x.id === id);
-  if (!m) return;
-  m.fired = false;
-  if (m.type === 'Игрок') ensureAccount(m.name);
-  persist();
-  renderMembers();
-  if (typeof window.__renderBank === 'function') window.__renderBank();
-  if (typeof window.__renderHeader === 'function') window.__renderHeader();
-}
-
-export async function deleteMember(id) {
-  const m = state.members.find(x => x.id === id);
-  if (!m) return;
-  const ok = await showConfirm(`Удалить «${m.name}» навсегда? Это действие необратимо.`, 'Удалить', 'Отмена');
-  if (!ok) return;
   state.members = state.members.filter(x => x.id !== id);
   persist();
   renderMembers();
@@ -310,4 +295,25 @@ export function initSostavHandlers() {
   if (btnCancel) btnCancel.addEventListener('click', () => {
     $('modal-character-card').style.display = 'none';
   });
+
+  // Мультикласс в карточке
+  const ccAdd = $('cc-add-class');
+  if (ccAdd) ccAdd.addEventListener('click', () => {
+    $('cc-class2-wrapper').style.display = 'flex';
+    $('cc-add-class').style.display = 'none';
+  });
+  const ccRemove = $('cc-remove-class');
+  if (ccRemove) ccRemove.addEventListener('click', () => {
+    $('cc-class2-wrapper').style.display = 'none';
+    $('cc-add-class').style.display = 'inline-flex';
+  });
+}
+
+/* ============================================================
+   СБРОС РАСКРЫТИЯ ПРИ ОТКРЫТИИ ВКЛАДКИ
+   ============================================================ */
+
+export function collapseAllMembers() {
+  state.members.forEach(m => { m.expanded = false; });
+  persist();
 }
