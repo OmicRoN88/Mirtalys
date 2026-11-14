@@ -945,7 +945,7 @@ button.warn:hover { background: #d08030; }
   align-items: center;
 }
 
-/* Спасброски от смерти (горизонтально) */
+/* Спасброски от смерти (кликабельные ячейки) */
 .death-saves {
   display: flex;
   flex-direction: column;
@@ -970,15 +970,38 @@ button.warn:hover { background: #d08030; }
 }
 .death-save-label.success-label { color: var(--success); }
 .death-save-label.failure-label { color: var(--error); }
-.death-save-cells { display: flex; gap: 6px; }
-.death-checkbox {
-  width: 18px !important;
-  height: 18px;
-  margin: 0;
+.death-save-cells {
+  display: flex;
+  gap: 6px;
   cursor: pointer;
-  accent-color: var(--success);
+  padding: 2px;
+  border-radius: 4px;
+  transition: background 0.15s;
 }
-.death-checkbox.failure { accent-color: var(--error); }
+.death-save-cells:hover { background: rgba(124,92,255,0.1); }
+.death-cell {
+  display: inline-block;
+  width: 20px;
+  height: 20px;
+  border: 2px solid var(--border);
+  border-radius: 4px;
+  background: var(--panel-2);
+  transition: all 0.15s;
+}
+.death-cell.filled.success {
+  background: var(--success);
+  border-color: var(--success);
+}
+.death-cell.filled.failure {
+  background: var(--error);
+  border-color: var(--error);
+}
+.death-save-hint {
+  font-size: 0.72rem;
+  color: var(--warning);
+  font-style: italic;
+  margin-left: auto;
+}
 
 /* ============================================================
    ЛОГИ БОЯ
