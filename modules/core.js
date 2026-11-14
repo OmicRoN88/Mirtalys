@@ -50,7 +50,13 @@ function defaultState() {
     missions: [],
     stoila: [],
     feed: 0,
-    feedLastChargedDay: null
+    feedLastChargedDay: null,
+    encounter: {
+      active: false,
+      round: 1,
+      turnIndex: 0,
+      combatants: []
+    }
   };
 }
 
@@ -73,6 +79,9 @@ export function loadState() {
     if (!Array.isArray(s.stoila)) s.stoila = [];
     if (typeof s.feed !== 'number') s.feed = 0;
     if (!s.feedLastChargedDay) s.feedLastChargedDay = null;
+    if (!s.encounter) {
+      s.encounter = { active: false, round: 1, turnIndex: 0, combatants: [] };
+    }
     s.members.forEach(m => {
       if (typeof m.fired !== 'boolean') m.fired = false;
       if (!m.type) m.type = 'Игрок';
