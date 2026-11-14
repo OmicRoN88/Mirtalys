@@ -933,6 +933,43 @@ button.warn:hover { background: #d08030; }
   align-items: center;
 }
 
+/* Спасброски от смерти */
+.death-saves {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin: 10px 0;
+  padding: 8px 12px;
+  background: rgba(255, 92, 108, 0.05);
+  border: 1px solid rgba(255, 92, 108, 0.25);
+  border-radius: 8px;
+  align-items: center;
+}
+.death-save-col { display: flex; flex-direction: column; gap: 4px; }
+.death-save-label {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  font-weight: 600;
+}
+.death-save-label.success-label { color: var(--success); }
+.death-save-label.failure-label { color: var(--error); }
+.death-save-cells { display: flex; gap: 6px; }
+.death-checkbox {
+  width: 18px !important;
+  height: 18px;
+  margin: 0;
+  cursor: pointer;
+  accent-color: var(--success);
+}
+.death-checkbox.failure { accent-color: var(--error); }
+.death-save-hint {
+  font-size: 0.75rem;
+  color: var(--warning);
+  font-style: italic;
+  margin-left: auto;
+}
+
 /* ============================================================
    ЛОГИ БОЯ
    ============================================================ */
