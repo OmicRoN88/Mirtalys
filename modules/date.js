@@ -8,10 +8,6 @@ import {
   MONTHS, WEEKDAYS, DAYS_IN_MONTH, CAMPAIGN_START
 } from './core.js';
 
-/* ============================================================
-   ФОРМАТИРОВАНИЕ ДАТЫ
-   ============================================================ */
-
 export function formatDate(date) {
   const wd = WEEKDAYS[weekdayIndex(date)];
   const month = MONTHS[date.month - 1];
@@ -32,14 +28,9 @@ export function weekdayIndex(date) {
   return map[h];
 }
 
-// Всегда 30 (для совместимости с bank.js, который вызывает daysInMonth)
 export function daysInMonth(month) {
   return 30;
 }
-
-/* ============================================================
-   ТОЧНЫЙ ПОДСЧЁТ ДНЕЙ (30-дневные месяцы)
-   ============================================================ */
 
 export function absoluteDay(d) {
   return (d.year - 1) * 360 + (d.month - 1) * 30 + (d.day - 1);
@@ -48,10 +39,6 @@ export function absoluteDay(d) {
 export function daysBetween(a, b) {
   return absoluteDay(b) - absoluteDay(a);
 }
-
-/* ============================================================
-   ИЗМЕНЕНИЕ ДАТЫ
-   ============================================================ */
 
 export function addMinutes(date, minutes) {
   const d = { ...date };
@@ -77,10 +64,6 @@ export function nextDayMorning(date) {
   return d;
 }
 
-/* ============================================================
-   ОБНОВЛЕНИЕ ОТОБРАЖЕНИЯ В ШАПКЕ
-   ============================================================ */
-
 export function updateDateDisplay() {
   const formatted = formatDate(state.date);
   $('topbar-date').innerHTML = formatted;
@@ -92,10 +75,6 @@ export function updateDateDisplay() {
   $('topbar-start').innerHTML = `Старт кампании: <strong>${startStr}</strong>. Прошло <strong>${passedStr}</strong> дн.`;
 }
 
-/* ============================================================
-   ЗАПОЛНЕНИЕ ПОЛЕЙ ВВОДА ДАТЫ
-   ============================================================ */
-
 export function fillDateInputs() {
   $('set-year').value = state.date.year;
   $('set-month').value = state.date.month;
@@ -103,10 +82,6 @@ export function fillDateInputs() {
   const t = String(state.date.hours).padStart(2,'0') + ':' + String(state.date.minutes).padStart(2,'0');
   $('set-time').value = t;
 }
-
-/* ============================================================
-   ИНИЦИАЛИЗАЦИЯ ВЫПАДАЮЩИХ СПИСКОВ
-   ============================================================ */
 
 export function initDateSelects() {
   const monthSel = $('set-month');
@@ -133,48 +108,37 @@ export function initDateSelects() {
   }
 }
 
-/* ============================================================
-   ОБРАБОТЧИКИ КНОПОК ДАТЫ
-   ============================================================ */
+// После изменения даты: обновить отображение, счётчик расходов, корм
+function afterDateChange() {
+  persist();
+  updateDateDisplay();
+  fillDateInputs();
+  if (typeof window.__renderExpenseInfo === 'function') window.__renderExpenseInfo();
+  if (typeof window.__chargeFeed === 'function') window.__chargeFeed();
+  if (typeof window.__renderMissions === 'function') window.__renderMissions();
+}
 
 export function initDateHandlers() {
-  // +1 час
   $('btn-plus-1h').addEventListener('click', () => {
     state.date = addMinutes(state.date, 60);
-    persist();
-    updateDateDisplay();
-    fillDateInputs();
-    if (typeof window.__renderExpenseInfo === 'function') window.__renderExpenseInfo();
+    afterDateChange();
   });
 
-  // +2 часа
   $('btn-plus-2h').addEventListener('click', () => {
     state.date = addMinutes(state.date, 120);
-    persist();
-    updateDateDisplay();
-    fillDateInputs();
-    if (typeof window.__renderExpenseInfo === 'function') window.__renderExpenseInfo();
+    afterDateChange();
   });
 
-  // +6 часов
   $('btn-plus-6h').addEventListener('click', () => {
     state.date = addMinutes(state.date, 360);
-    persist();
-    updateDateDisplay();
-    fillDateInputs();
-    if (typeof window.__renderExpenseInfo === 'function') window.__renderExpenseInfo();
+    afterDateChange();
   });
 
-  // Следующий день (07:00)
   $('btn-next-day').addEventListener('click', () => {
     state.date = nextDayMorning(state.date);
-    persist();
-    updateDateDisplay();
-    fillDateInputs();
-    if (typeof window.__renderExpenseInfo === 'function') window.__renderExpenseInfo();
+    afterDateChange();
   });
 
-  // Установить вручную
   $('btn-set-date').addEventListener('click', () => {
     const errEl = $('date-error');
     if (errEl) errEl.textContent = '';
@@ -198,9 +162,6 @@ export function initDateHandlers() {
       return;
     }
     state.date = { year, month, day, hours: hh, minutes: mm };
-    persist();
-    updateDateDisplay();
-    fillDateInputs();
-    if (typeof window.__renderExpenseInfo === 'function') window.__renderExpenseInfo();
+    afterDateChange();
   });
 }
