@@ -39,16 +39,29 @@
     <h2>Бой</h2>
 
     <div class="encounter-header">
-      <div class="encounter-round" id="encounter-round"></div>
+      <div class="encounter-round" id="encounter-round">Бой не начат</div>
       <div class="encounter-actions-top">
         <button id="btn-add-players-enc" class="secondary small">Добавить игроков</button>
         <button id="btn-add-enemy-enc" class="danger small">Добавить врага</button>
-        <button id="btn-next-turn" class="success-btn">Следующий ход</button>
+        <button id="btn-next-turn" class="warn">Начать бой</button>
         <button id="btn-reset-enc" class="secondary small">Сброс</button>
       </div>
     </div>
 
     <div id="encounter-list" class="encounter-list"></div>
+  </div>
+</div>
+
+<!-- ================= МОДАЛЬНОЕ ОКНО: ДОБАВИТЬ ИГРОКОВ ================= -->
+<div class="modal-overlay" id="modal-add-players" style="display:none;">
+  <div class="modal">
+    <button class="modal-close" data-close>×</button>
+    <h2>Добавить игроков в бой</h2>
+    <div id="add-players-list" class="add-players-list"></div>
+    <div class="actions" style="margin-top: 16px;">
+      <button id="btn-confirm-add-players" class="success-btn">Добавить выбранных</button>
+      <button id="btn-cancel-add-players" class="secondary">Отмена</button>
+    </div>
   </div>
 </div>
 
