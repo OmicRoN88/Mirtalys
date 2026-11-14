@@ -48,7 +48,9 @@ function defaultState() {
     warehouse: [],
     traders: [],
     missions: [],
-    stoila: []
+    stoila: [],
+    feed: 0,
+    feedLastChargedDay: null
   };
 }
 
@@ -69,6 +71,8 @@ export function loadState() {
     if (!Array.isArray(s.traders)) s.traders = [];
     if (!Array.isArray(s.missions)) s.missions = [];
     if (!Array.isArray(s.stoila)) s.stoila = [];
+    if (typeof s.feed !== 'number') s.feed = 0;
+    if (!s.feedLastChargedDay) s.feedLastChargedDay = null;
     s.members.forEach(m => {
       if (typeof m.fired !== 'boolean') m.fired = false;
       if (!m.type) m.type = 'Игрок';
@@ -106,6 +110,41 @@ export function ensureAccount(name) {
   }
   return state.accounts[name];
 }
+
+/* ============================================================
+   РАНГИ ГИЛЬДИИ
+   ============================================================ */
+
+export function getActivePlayers() {
+  return state.members.filter(m => m.type === 'Игрок' && !m.fired);
+}
+
+export function getAveragePlayerLevel() {
+  const players = getActivePlayers();
+  if (!players.length) return 0;
+  const sum = players.reduce((s, p) => s + (p.level || 1), 0);
+  return Math.round(sum / players.length);
+}
+
+export function getMaxPlayerLevel() {
+  const players = getActivePlayers();
+  if (!players.length) return 1;
+  return Math.max(...players.map(p => p.level || 1));
+}
+
+export function getGuildRank() {
+  const avg = getAveragePlayerLevel();
+  if (avg <= 2) return 'E';
+  if (avg <= 6) return 'D';
+  if (avg <= 8) return 'C';
+  if (avg <= 12) return 'B';
+  if (avg <= 14) return 'A';
+  return 'S';
+}
+
+/* ============================================================
+   КОНСТАНТЫ
+   ============================================================ */
 
 export const MONTHS = ['января','февраля','марта','апреля','мая','июня',
                        'июля','августа','сентября','октября','ноября','декабря'];
