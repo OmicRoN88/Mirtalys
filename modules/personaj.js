@@ -1,21 +1,14 @@
 /* ============================================================
    PERSONAJ.JS — Логика раздела «Персонаж»
-   Создание Игрока (попадает в «Состав»)
    ============================================================ */
 
 import {
   $, state, persist,
-  escapeHtml, escapeAttr,
   ensureAccount,
   DND_CLASSES, DND_LEVELS
 } from './core.js';
 
-/* ============================================================
-   ИНИЦИАЛИЗАЦИЯ ВЫПАДАЮЩИХ СПИСКОВ
-   ============================================================ */
-
 export function initPersonajHandlers() {
-  // Классы
   const classSel = $('personaj-class');
   if (classSel) {
     DND_CLASSES.forEach(c => {
@@ -26,7 +19,6 @@ export function initPersonajHandlers() {
     });
   }
 
-  // Уровни
   const levelSel = $('personaj-level');
   if (levelSel) {
     DND_LEVELS.forEach(l => {
@@ -38,14 +30,9 @@ export function initPersonajHandlers() {
     levelSel.value = '1';
   }
 
-  // Кнопка «Создать»
   const btn = $('btn-create-personaj');
   if (btn) btn.addEventListener('click', createPersonaj);
 }
-
-/* ============================================================
-   СОЗДАНИЕ ПЕРСОНАЖА
-   ============================================================ */
 
 function createPersonaj() {
   const errEl = $('personaj-error');
@@ -56,11 +43,15 @@ function createPersonaj() {
   const position = $('personaj-position').value.trim();
   const class1 = $('personaj-class').value;
   const level = parseInt($('personaj-level').value, 10) || 1;
+  const hp = parseInt($('personaj-hp').value, 10) || 10;
+  const maxHp = parseInt($('personaj-maxhp').value, 10) || 10;
+  const ac = parseInt($('personaj-ac').value, 10) || 10;
+  const passive = parseInt($('personaj-passive').value, 10) || 10;
+  const weight = parseInt($('personaj-weight').value, 10) || 0;
   const info = $('personaj-info').value;
 
   if (!name) { if (errEl) errEl.textContent = 'Введите имя'; return; }
 
-  // Проверка на дубликат
   const dup = state.members.find(m => m.name.toLowerCase() === name.toLowerCase());
   if (dup) {
     if (errEl) errEl.textContent = 'Персонаж с таким именем уже есть';
@@ -73,7 +64,12 @@ function createPersonaj() {
     rank: '', position, info, expanded: true,
     species,
     classes: class1 ? [class1] : [],
-    level
+    level,
+    hp: Math.min(hp, maxHp),
+    maxHp,
+    ac,
+    passivePerception: passive,
+    weight
   };
   state.members.push(newMember);
   ensureAccount(name);
@@ -86,12 +82,15 @@ function createPersonaj() {
   $('personaj-info').value = '';
   if ($('personaj-level')) $('personaj-level').value = '1';
   if ($('personaj-class')) $('personaj-class').selectedIndex = 0;
+  if ($('personaj-hp')) $('personaj-hp').value = '10';
+  if ($('personaj-maxhp')) $('personaj-maxhp').value = '10';
+  if ($('personaj-ac')) $('personaj-ac').value = '10';
+  if ($('personaj-passive')) $('personaj-passive').value = '10';
+  if ($('personaj-weight')) $('personaj-weight').value = '0';
 
-  // Обновляем состав и шапку
   if (typeof window.__renderBank === 'function') window.__renderBank();
   if (typeof window.__renderHeader === 'function') window.__renderHeader();
 
-  // Показываем сообщение об успехе
   if (errEl) {
     errEl.style.color = 'var(--success)';
     errEl.textContent = `Персонаж «${name}» создан и добавлен в состав!`;
