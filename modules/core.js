@@ -1,6 +1,5 @@
 /* ============================================================
    CORE.JS — Фундамент Мирталиса
-   Состояние, хранилище, утилиты, экранирование
    ============================================================ */
 
 const STORAGE_KEY = 'mirtalis_state_v1';
@@ -48,7 +47,8 @@ function defaultState() {
     expensesLastPaidAmount: 0,
     warehouse: [],
     traders: [],
-    missions: []
+    missions: [],
+    stoila: []
   };
 }
 
@@ -68,6 +68,7 @@ export function loadState() {
     if (!Array.isArray(s.warehouse)) s.warehouse = [];
     if (!Array.isArray(s.traders)) s.traders = [];
     if (!Array.isArray(s.missions)) s.missions = [];
+    if (!Array.isArray(s.stoila)) s.stoila = [];
     s.members.forEach(m => {
       if (typeof m.fired !== 'boolean') m.fired = false;
       if (!m.type) m.type = 'Игрок';
@@ -81,7 +82,6 @@ export function loadState() {
       delete m.status;
       delete m.statusDate;
     });
-    // Валидация даты: все месяцы по 30 дней
     if (s.date.day > 30) s.date.day = 30;
     if (s.date.month > 12) s.date.month = 12;
     return s;
@@ -111,8 +111,6 @@ export const MONTHS = ['января','февраля','марта','апрел�
                        'июля','августа','сентября','октября','ноября','декабря'];
 export const WEEKDAYS = ['Воскресенье','Понедельник','Вторник','Среда',
                          'Четверг','Пятница','Суббота'];
-
-// Все месяцы по 30 дней, 12 месяцев = 360 дней в году
 export const DAYS_IN_MONTH = [30,30,30,30,30,30,30,30,30,30,30,30];
 
 export const WAREHOUSE_CATEGORIES = ['Оружие', 'Броня', 'Снаряжение', 'Инструменты',
