@@ -29,6 +29,10 @@ import {
   renderMissions, checkOverdueMissions, initMissionsHandlers
 } from './modules/missions.js';
 
+import {
+  renderStoila, initStoilaHandlers
+} from './modules/stoila.js';
+
 /* ============================================================
    «МОСТИКИ»
    ============================================================ */
@@ -58,6 +62,7 @@ async function openModal(name) {
     renderMissions();
     await checkOverdueMissions();
   }
+  if (name === 'stoila') { renderStoila(); showError('stoila-error', ''); }
 }
 
 function closeModal(el) {
@@ -97,6 +102,7 @@ initBankHandlers();
 initSkladHandlers();
 initTorgovcyHandlers();
 initMissionsHandlers();
+initStoilaHandlers();
 
 /* ============================================================
    ПЕРВИЧНАЯ ОТРИСОВКА
