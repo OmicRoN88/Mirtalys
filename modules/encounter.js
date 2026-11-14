@@ -20,7 +20,6 @@ const CONDITIONS = [
   'Ошеломлённый', 'Парализованный', 'Схваченный'
 ];
 
-// Состояния, которые заставляют пропустить ход
 const SKIP_TURN_CONDITIONS = [
   'Бессознательный', 'Недееспособный', 'Окаменевший',
   'Ошеломлённый', 'Парализованный'
@@ -39,6 +38,91 @@ function mustSkipTurn(c) {
   return c.conditions && c.conditions.some(cond => SKIP_TURN_CONDITIONS.includes(cond));
 }
 
+/* Мини-диалог для урона/исцеления */
+function showHpDialog(combatant, onDone) {
+  const overlay = document.createElement('div');
+  overlay.className = 'dialog-overlay';
+  overlay.innerHTML = `
+    <div class="dialog">
+      <p>${escapeHtml(combatant.name)} — HP: ${combatant.hp}/${combatant.maxHp}${combatant.tempHp ? ` (+${combatant.tempHp})` : ''}</p>
+      <input type="number" id="hp-dialog-input" min="0" placeholder="Значение" style="margin-bottom: 16px;">
+      <div class="dialog-actions">
+        <button class="secondary" data-cancel>Отмена</button>
+        <button class="danger" data-damage>Урон</button>
+        <button class="success-btn" data-heal>Исцеление</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(overlay);
+  const input = overlay.querySelector('#hp-dialog-input');
+  input.focus();
+  const close = () => overlay.remove();
+
+  overlay.querySelector('[data-cancel]').addEventListener('click', close);
+  overlay.addEventListener('click', e => { if (e.target === overlay) close(); });
+
+  overlay.querySelector('[data-damage]').addEventListener('click', () => {
+    const val = parseInt(input.value, 10);
+    if (isNaN(val) || val <= 0) return;
+    let dmg = val;
+    if (combatant.tempHp > 0) {
+      const absorbed = Math.min(combatant.tempHp, dmg);
+      combatant.tempHp -= absorbed;
+      dmg -= absorbed;
+    }
+    if (dmg > 0) combatant.hp -= dmg;
+    if (combatant.hp <= 0) { combatant.hp = 0; combatant.status = 'dead'; }
+    persist();
+    close();
+    onDone();
+  });
+
+  overlay.querySelector('[data-heal]').addEventListener('click', () => {
+    const val = parseInt(input.value, 10);
+    if (isNaN(val) || val <= 0) return;
+    combatant.hp = Math.min(combatant.maxHp, combatant.hp + val);
+    if (combatant.hp > 0 && combatant.status === 'dead') combatant.status = 'alive';
+    persist();
+    close();
+    onDone();
+  });
+}
+
+/* Мини-диалог для КД */
+function showAcDialog(combatant, onDone) {
+  const overlay = document.createElement('div');
+  overlay.className = 'dialog-overlay';
+  overlay.innerHTML = `
+    <div class="dialog">
+      <p>${escapeHtml(combatant.name)} — КД: <b>${combatant.ac}</b></p>
+      <div style="display: flex; gap: 8px; justify-content: center; margin-bottom: 16px; flex-wrap: wrap;">
+        <button class="danger" data-ac="-2">−2 КД</button>
+        <button class="danger" data-ac="-1">−1 КД</button>
+        <button class="success-btn" data-ac="+1">+1 КД</button>
+        <button class="success-btn" data-ac="+2">+2 КД</button>
+      </div>
+      <div class="dialog-actions">
+        <button class="secondary" data-cancel>Закрыть</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(overlay);
+  const close = () => overlay.remove();
+
+  overlay.querySelector('[data-cancel]').addEventListener('click', close);
+  overlay.addEventListener('click', e => { if (e.target === overlay) close(); });
+
+  overlay.querySelectorAll('[data-ac]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const delta = parseInt(btn.dataset.ac, 10);
+      combatant.ac += delta;
+      persist();
+      close();
+      onDone();
+    });
+  });
+}
+
 /* ============================================================
    ОТРИСОВКА
    ============================================================ */
@@ -51,7 +135,6 @@ export function renderEncounter() {
 
   const enc = state.encounter;
 
-  // Кнопка «Начать бой» / «Следующий ход»
   if (nextBtn) {
     if (enc.active) {
       nextBtn.textContent = 'Следующий ход';
@@ -80,31 +163,31 @@ export function renderEncounter() {
     const isActive = c.id === activeId;
     const dead = isDead(c);
     const disabled = mustSkipTurn(c) && !dead;
+    const expanded = c.expanded === true;
 
     let rowClass = 'encounter-row';
     rowClass += c.isEnemy ? ' enemy' : ' player';
     if (dead) rowClass += ' dead';
     if (isActive) rowClass += ' active';
-    if (!isActive) rowClass += ' collapsed';
+    if (!expanded) rowClass += ' collapsed';
 
-    // Статусы-надписи
+    // Бейджи состояний
     let statusBadges = '';
     if (dead) statusBadges += `<span class="enc-status danger">Мертв</span>`;
-    if (disabled && c.conditions) {
+    if (c.conditions) {
       c.conditions.forEach(cond => {
         statusBadges += `<span class="enc-status warning">${escapeHtml(cond)}</span>`;
       });
     }
 
-    // Раскрытая часть (только для активного)
-    const expandedPart = isActive ? `
+    // Раскрытая часть
+    const expandedPart = expanded ? `
       <div class="enc-resources">
         <label><input type="checkbox" data-res="action" data-id="${c.id}" ${c.action ? 'checked' : ''}> Действие</label>
         <label><input type="checkbox" data-res="bonus" data-id="${c.id}" ${c.bonus ? 'checked' : ''}> Бонусное</label>
         <label><input type="checkbox" data-res="reaction" data-id="${c.id}" ${c.reaction ? 'checked' : ''}> Реакция</label>
       </div>
       <div class="enc-conditions">
-        <label>Состояния:</label>
         <select class="enc-condition-select" data-cond="${c.id}">
           <option value="">— Добавить состояние —</option>
           ${CONDITIONS.map(cond => `<option value="${escapeAttr(cond)}">${escapeHtml(cond)}</option>`).join('')}
@@ -117,6 +200,9 @@ export function renderEncounter() {
           `).join('')}
         </div>
       ` : ''}
+      <div class="enc-actions">
+        <button class="small secondary" data-remove="${c.id}">Удалить из боя</button>
+      </div>
     ` : '';
 
     const row = document.createElement('div');
@@ -125,27 +211,53 @@ export function renderEncounter() {
     row.innerHTML = `
       <div class="enc-initiative">
         <input type="number" class="enc-init-input" data-init="${c.id}" value="${c.initiative || ''}" placeholder="Иниц.">
-        ${c.isEnemy ? `<button class="small secondary" data-roll="${c.id}" title="Бросок d20">🎲</button>` : ''}
       </div>
       <div class="enc-main">
-        <div class="enc-head">
+        <div class="enc-head" data-toggle="${c.id}" style="cursor: pointer;">
           <span class="enc-name">${escapeHtml(c.name)}</span>
           <span class="enc-stats">
-            <b>HP: <input type="number" class="enc-hp-input" data-hp="${c.id}" value="${c.hp}" min="0"> / ${c.maxHp}</b>
-            <b>КД: ${c.ac}</b>
+            <b class="enc-hp-clickable" data-hp-click="${c.id}">HP: ${c.hp}${c.tempHp > 0 ? ` <span style="color: var(--warning);">(+${c.tempHp})</span>` : ''} / ${c.maxHp}</b>
+            <b class="enc-ac-clickable" data-ac-click="${c.id}">КД: ${c.ac}</b>
           </span>
+          <span class="enc-arrow">${expanded ? '▲' : '▼'}</span>
         </div>
         ${statusBadges ? `<div class="enc-statuses">${statusBadges}</div>` : ''}
         ${expandedPart}
-        <div class="enc-actions">
-          <button class="small secondary" data-remove="${c.id}">Удалить</button>
-        </div>
       </div>
     `;
     container.appendChild(row);
   });
 
   // ---------- Обработчики ----------
+
+  container.querySelectorAll('[data-toggle]').forEach(el => {
+    el.addEventListener('click', (e) => {
+      if (e.target.closest('button, input, select')) return;
+      const c = enc.combatants.find(x => x.id === el.dataset.toggle);
+      if (!c) return;
+      c.expanded = !c.expanded;
+      persist();
+      renderEncounter();
+    });
+  });
+
+  container.querySelectorAll('[data-hp-click]').forEach(el => {
+    el.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const c = enc.combatants.find(x => x.id === el.dataset.hpClick);
+      if (!c) return;
+      showHpDialog(c, renderEncounter);
+    });
+  });
+
+  container.querySelectorAll('[data-ac-click]').forEach(el => {
+    el.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const c = enc.combatants.find(x => x.id === el.dataset.acClick);
+      if (!c) return;
+      showAcDialog(c, renderEncounter);
+    });
+  });
 
   container.querySelectorAll('[data-init]').forEach(el => {
     el.addEventListener('change', () => {
@@ -155,30 +267,6 @@ export function renderEncounter() {
         persist();
         renderEncounter();
       }
-    });
-  });
-
-  container.querySelectorAll('[data-roll]').forEach(el => {
-    el.addEventListener('click', () => {
-      const c = enc.combatants.find(x => x.id === el.dataset.roll);
-      if (c) {
-        c.initiative = Math.floor(Math.random() * 20) + 1;
-        persist();
-        renderEncounter();
-      }
-    });
-  });
-
-  container.querySelectorAll('[data-hp]').forEach(el => {
-    el.addEventListener('change', () => {
-      const c = enc.combatants.find(x => x.id === el.dataset.hp);
-      if (!c) return;
-      c.hp = parseInt(el.value, 10) || 0;
-      // Автоматическая смерть
-      if (c.hp <= 0) c.status = 'dead';
-      else if (c.status === 'dead') c.status = 'alive';
-      persist();
-      renderEncounter();
     });
   });
 
@@ -192,7 +280,6 @@ export function renderEncounter() {
     });
   });
 
-  // Добавление состояния
   container.querySelectorAll('[data-cond]').forEach(el => {
     el.addEventListener('change', () => {
       const c = enc.combatants.find(x => x.id === el.dataset.cond);
@@ -205,9 +292,9 @@ export function renderEncounter() {
     });
   });
 
-  // Удаление состояния
   container.querySelectorAll('[data-remove-cond]').forEach(el => {
-    el.addEventListener('click', () => {
+    el.addEventListener('click', (e) => {
+      e.stopPropagation();
       const c = enc.combatants.find(x => x.id === el.dataset.removeCond);
       if (!c || !Array.isArray(c.conditions)) return;
       const idx = parseInt(el.dataset.condIdx, 10);
@@ -217,9 +304,9 @@ export function renderEncounter() {
     });
   });
 
-  // Удаление из боя
   container.querySelectorAll('[data-remove]').forEach(el => {
-    el.addEventListener('click', async () => {
+    el.addEventListener('click', async (e) => {
+      e.stopPropagation();
       const c = enc.combatants.find(x => x.id === el.dataset.remove);
       if (!c) return;
       const ok = await showConfirm(`Удалить «${c.name}» из боя?`, 'Удалить', 'Отмена');
@@ -233,7 +320,7 @@ export function renderEncounter() {
 }
 
 /* ============================================================
-   СЛЕДУЮЩИЙ ХОД / НАЧАЛО БОЯ
+   СЛЕДУЮЩИЙ ХОД
    ============================================================ */
 
 export function nextTurn() {
@@ -243,15 +330,11 @@ export function nextTurn() {
   const sorted = [...enc.combatants].sort((a, b) => (b.initiative || 0) - (a.initiative || 0));
 
   if (!enc.active) {
-    // Начинаем бой
     enc.active = true;
     enc.round = 1;
-    enc.turnIndex = 0;
-    // Если первый по инициативе пропускает ход — ищем первого, кто может ходить
     const first = sorted.findIndex(c => !mustSkipTurn(c));
     enc.turnIndex = first >= 0 ? first : 0;
   } else {
-    // Ищем следующего, кто может ходить
     let nextIdx = enc.turnIndex + 1;
     let guard = 0;
     while (guard < 1000) {
@@ -270,7 +353,7 @@ export function nextTurn() {
     }
   }
 
-  // Сбрасываем ресурсы у текущего существа
+  // Сбрасываем ресурсы у текущего
   const current = sorted[enc.turnIndex];
   if (current) {
     current.action = false;
@@ -283,7 +366,7 @@ export function nextTurn() {
 }
 
 /* ============================================================
-   ДОБАВЛЕНИЕ ИГРОКОВ (окно выбора)
+   ДОБАВЛЕНИЕ ИГРОКОВ
    ============================================================ */
 
 export function openAddPlayersModal() {
@@ -327,12 +410,14 @@ export function confirmAddPlayers() {
         initiative: 0,
         hp: 10,
         maxHp: 10,
+        tempHp: 0,
         ac: 10,
         action: false,
         bonus: false,
         reaction: false,
         status: 'alive',
-        conditions: []
+        conditions: [],
+        expanded: false
       });
     }
   });
@@ -343,18 +428,35 @@ export function confirmAddPlayers() {
 }
 
 /* ============================================================
-   ДОБАВЛЕНИЕ ВРАГА
+   ДОБАВЛЕНИЕ ВРАГА (одна форма)
    ============================================================ */
 
-export async function addEnemy() {
-  const name = await showPrompt('Имя врага:', 'Гоблин');
-  if (!name) return;
-  const hpStr = await showPrompt('Максимум HP:', '7');
-  const hp = parseInt(hpStr, 10) || 7;
-  const acStr = await showPrompt('Класс брони (КД):', '15');
-  const ac = parseInt(acStr, 10) || 10;
-  const initStr = await showPrompt('Инициатива (или оставьте пустым для броска):', '');
-  const initiative = initStr === null || initStr === '' ? Math.floor(Math.random() * 20) + 1 : parseInt(initStr, 10) || 0;
+export function openAddEnemyModal() {
+  const modal = $('modal-add-enemy');
+  if (!modal) return;
+  // Сброс полей
+  $('enemy-name').value = 'Гоблин';
+  $('enemy-hp').value = '7';
+  $('enemy-ac').value = '15';
+  $('enemy-init').value = '';
+  const errEl = $('enemy-error');
+  if (errEl) errEl.textContent = '';
+  modal.style.display = 'flex';
+}
+
+export function confirmAddEnemy() {
+  const errEl = $('enemy-error');
+  if (errEl) errEl.textContent = '';
+
+  const name = $('enemy-name').value.trim();
+  const hp = parseInt($('enemy-hp').value, 10);
+  const ac = parseInt($('enemy-ac').value, 10);
+  const initStr = $('enemy-init').value.trim();
+  const initiative = initStr === '' ? Math.floor(Math.random() * 20) + 1 : parseInt(initStr, 10) || 0;
+
+  if (!name) { if (errEl) errEl.textContent = 'Введите имя'; return; }
+  if (isNaN(hp) || hp < 1) { if (errEl) errEl.textContent = 'HP должно быть ≥ 1'; return; }
+  if (isNaN(ac) || ac < 1) { if (errEl) errEl.textContent = 'КД должно быть ≥ 1'; return; }
 
   state.encounter.combatants.push({
     id: Date.now() + '_' + Math.random().toString(36).slice(2, 6),
@@ -364,14 +466,17 @@ export async function addEnemy() {
     initiative,
     hp,
     maxHp: hp,
+    tempHp: 0,
     ac,
     action: false,
     bonus: false,
     reaction: false,
     status: 'alive',
-    conditions: []
+    conditions: [],
+    expanded: false
   });
   persist();
+  $('modal-add-enemy').style.display = 'none';
   renderEncounter();
 }
 
@@ -396,7 +501,7 @@ export function initEncounterHandlers() {
   if (btnPlayers) btnPlayers.addEventListener('click', openAddPlayersModal);
 
   const btnEnemy = $('btn-add-enemy-enc');
-  if (btnEnemy) btnEnemy.addEventListener('click', addEnemy);
+  if (btnEnemy) btnEnemy.addEventListener('click', openAddEnemyModal);
 
   const btnNext = $('btn-next-turn');
   if (btnNext) btnNext.addEventListener('click', nextTurn);
@@ -404,12 +509,19 @@ export function initEncounterHandlers() {
   const btnReset = $('btn-reset-enc');
   if (btnReset) btnReset.addEventListener('click', resetEncounter);
 
-  // Кнопки внутри модалки выбора игроков
-  const btnConfirm = $('btn-confirm-add-players');
-  if (btnConfirm) btnConfirm.addEventListener('click', confirmAddPlayers);
-
-  const btnCancel = $('btn-cancel-add-players');
-  if (btnCancel) btnCancel.addEventListener('click', () => {
+  // Модалка выбора игроков
+  const btnConfirmPlayers = $('btn-confirm-add-players');
+  if (btnConfirmPlayers) btnConfirmPlayers.addEventListener('click', confirmAddPlayers);
+  const btnCancelPlayers = $('btn-cancel-add-players');
+  if (btnCancelPlayers) btnCancelPlayers.addEventListener('click', () => {
     $('modal-add-players').style.display = 'none';
+  });
+
+  // Модалка добавления врага
+  const btnConfirmEnemy = $('btn-confirm-add-enemy');
+  if (btnConfirmEnemy) btnConfirmEnemy.addEventListener('click', confirmAddEnemy);
+  const btnCancelEnemy = $('btn-cancel-add-enemy');
+  if (btnCancelEnemy) btnCancelEnemy.addEventListener('click', () => {
+    $('modal-add-enemy').style.display = 'none';
   });
 }
