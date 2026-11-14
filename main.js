@@ -45,19 +45,11 @@ import {
   renderEncounter, initEncounterHandlers
 } from './modules/encounter.js';
 
-/* ============================================================
-   «МОСТИКИ»
-   ============================================================ */
-
 window.__renderBank = renderBank;
 window.__renderExpenseInfo = renderExpenseInfo;
 window.__renderMissions = renderMissions;
 window.__checkOverdueMissions = checkOverdueMissions;
 window.__chargeFeed = chargeFeed;
-
-/* ============================================================
-   ШАПКА
-   ============================================================ */
 
 export function renderHeader() {
   const el = $('guild-title');
@@ -67,10 +59,6 @@ export function renderHeader() {
 }
 
 window.__renderHeader = renderHeader;
-
-/* ============================================================
-   ОТКРЫТИЕ / ЗАКРЫТИЕ МОДАЛЬНЫХ ОКОН
-   ============================================================ */
 
 async function openModal(name) {
   const el = $('modal-' + name);
@@ -84,27 +72,18 @@ async function openModal(name) {
   if (name === 'expenses') { renderExpenses(); showError('pay-error', ''); }
   if (name === 'warehouse') { renderWarehouse(); showError('wh-error', ''); }
   if (name === 'traders') { renderTraders(); showError('tr-error', ''); }
-  if (name === 'missions') {
-    renderMissions();
-    await checkOverdueMissions();
-  }
+  if (name === 'missions') { renderMissions(); await checkOverdueMissions(); }
   if (name === 'stoila') { renderStoila(); showError('stoila-error', ''); }
   if (name === 'travel') { renderTravel(); }
   if (name === 'encounter') { renderEncounter(); }
 }
 
-function closeModal(el) {
-  el.style.display = 'none';
-}
+function closeModal(el) { el.style.display = 'none'; }
 
 function showError(id, msg) {
   const el = $(id);
   if (el) el.textContent = msg || '';
 }
-
-/* ============================================================
-   ОБРАБОТЧИКИ МЕНЮ
-   ============================================================ */
 
 document.querySelectorAll('.main-menu button').forEach(btn => {
   btn.addEventListener('click', () => openModal(btn.dataset.modal));
@@ -119,10 +98,6 @@ document.querySelectorAll('.modal-overlay').forEach(overlay => {
   });
 });
 
-/* ============================================================
-   ИНИЦИАЛИЗАЦИЯ
-   ============================================================ */
-
 initDateSelects();
 initDateHandlers();
 initSostavHandlers();
@@ -134,10 +109,6 @@ initStoilaHandlers();
 initPersonajHandlers();
 initTravelHandlers();
 initEncounterHandlers();
-
-/* ============================================================
-   ПЕРВИЧНАЯ ОТРИСОВКА
-   ============================================================ */
 
 updateDateDisplay();
 renderHeader();
