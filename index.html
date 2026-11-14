@@ -139,7 +139,7 @@
   </div>
 </div>
 
-<!-- ================= КАРТОЧКА ПЕРСОНАЖА (расширенная) ================= -->
+<!-- ================= КАРТОЧКА ПЕРСОНАЖА ================= -->
 <div class="modal-overlay" id="modal-character-card" style="display:none;">
   <div class="modal">
     <button class="modal-close" data-close>×</button>
@@ -166,17 +166,23 @@
         <label for="cc-level">Уровень</label>
         <select id="cc-level"></select>
       </div>
-      <div class="field">
+      <div class="field" style="grid-column: span 2;">
         <label for="cc-class">Класс</label>
-        <select id="cc-class"></select>
+        <div class="class-row">
+          <select id="cc-class"></select>
+          <button type="button" class="small class-toggle" id="cc-add-class" title="Добавить второй класс">+</button>
+        </div>
+      </div>
+      <div class="field" id="cc-class2-wrapper" style="grid-column: span 2; display: none;">
+        <label for="cc-class2">Второй класс</label>
+        <div class="class-row">
+          <select id="cc-class2"></select>
+          <button type="button" class="small danger class-toggle" id="cc-remove-class" title="Убрать второй класс">−</button>
+        </div>
       </div>
     </div>
 
     <div class="row">
-      <div class="field">
-        <label for="cc-hp">HP</label>
-        <input type="number" id="cc-hp" min="0" step="1">
-      </div>
       <div class="field">
         <label for="cc-maxhp">Макс. HP</label>
         <input type="number" id="cc-maxhp" min="1" step="1">
@@ -211,7 +217,7 @@
   </div>
 </div>
 
-<!-- ================= ПЕРСОНАЖ (создание) ================= -->
+<!-- ================= ПЕРСОНАЖ ================= -->
 <div class="modal-overlay" id="modal-personaj" style="display:none;">
   <div class="modal">
     <button class="modal-close" data-close>×</button>
@@ -237,17 +243,23 @@
         <label for="personaj-level">Уровень</label>
         <select id="personaj-level"></select>
       </div>
-      <div class="field">
+      <div class="field" style="grid-column: span 2;">
         <label for="personaj-class">Класс</label>
-        <select id="personaj-class"></select>
+        <div class="class-row">
+          <select id="personaj-class"></select>
+          <button type="button" class="small class-toggle" id="personaj-add-class" title="Добавить второй класс">+</button>
+        </div>
+      </div>
+      <div class="field" id="personaj-class2-wrapper" style="grid-column: span 2; display: none;">
+        <label for="personaj-class2">Второй класс</label>
+        <div class="class-row">
+          <select id="personaj-class2"></select>
+          <button type="button" class="small danger class-toggle" id="personaj-remove-class" title="Убрать второй класс">−</button>
+        </div>
       </div>
     </div>
 
     <div class="row">
-      <div class="field">
-        <label for="personaj-hp">HP</label>
-        <input type="number" id="personaj-hp" min="0" step="1" value="10">
-      </div>
       <div class="field">
         <label for="personaj-maxhp">Макс. HP</label>
         <input type="number" id="personaj-maxhp" min="1" step="1" value="10">
