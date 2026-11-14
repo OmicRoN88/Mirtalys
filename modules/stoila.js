@@ -47,7 +47,8 @@ export function renderStoila() {
   const list = $('stoila-list');
   if (!list) return;
 
-  const filter = $('stoila-filter').value;
+  const filterEl = $('stoila-filter');
+  const filter = filterEl ? filterEl.value : 'all';
 
   let items = state.stoila.slice();
   if (filter !== 'all') {
@@ -219,15 +220,17 @@ export function renderStoila() {
 }
 
 /* ============================================================
-   ФОРМА: обновление списка названий
+   ФОРМА
    ============================================================ */
 
 function updateNameOptions() {
-  const category = $('stoila-category').value;
+  const catEl = $('stoila-category');
   const nameSel = $('stoila-name-select');
   const nameManual = $('stoila-name-manual');
   const nameManualWrapper = $('stoila-name-manual-wrapper');
+  if (!catEl || !nameSel) return;
 
+  const category = catEl.value;
   let names = [];
   if (category === 'Животное') names = ANIMAL_NAMES;
   else if (category === 'Транспорт') names = TRANSPORT_NAMES;
@@ -240,23 +243,29 @@ function updateNameOptions() {
     nameSel.appendChild(opt);
   });
 
-  if (names.includes('Другое')) {
-    const isOther = nameSel.value === 'Другое';
-    nameManualWrapper.style.display = isOther ? 'flex' : 'none';
-    if (!isOther) nameManual.value = '';
-  } else {
-    nameManualWrapper.style.display = 'none';
-    nameManual.value = '';
+  if (nameManualWrapper && nameManual) {
+    if (names.includes('Другое')) {
+      const isOther = nameSel.value === 'Другое';
+      nameManualWrapper.style.display = isOther ? 'flex' : 'none';
+      if (!isOther) nameManual.value = '';
+    } else {
+      nameManualWrapper.style.display = 'none';
+      nameManual.value = '';
+    }
   }
 
   applyPreset();
 }
 
 function applyPreset() {
-  const category = $('stoila-category').value;
-  const name = $('stoila-name-select').value;
+  const catEl = $('stoila-category');
+  const nameSel = $('stoila-name-select');
   const capEl = $('stoila-capacity');
   const spdEl = $('stoila-speed');
+  if (!catEl || !nameSel || !capEl || !spdEl) return;
+
+  const category = catEl.value;
+  const name = nameSel.value;
 
   if (category === 'Животное' && ANIMAL_PRESETS[name]) {
     capEl.value = ANIMAL_PRESETS[name].capacity;
@@ -278,18 +287,29 @@ export function addStoila() {
   const errEl = $('stoila-error');
   if (errEl) errEl.textContent = '';
 
-  const category = $('stoila-category').value;
-  const nameSel = $('stoila-name-select').value;
-  const nameManual = $('stoila-name-manual').value.trim();
+  const catEl = $('stoila-category');
+  const nameSelEl = $('stoila-name-select');
+  const nameManualEl = $('stoila-name-manual');
+  const genderEl = $('stoila-gender');
+  const nickEl = $('stoila-nickname');
+  const capEl = $('stoila-capacity');
+  const spdEl = $('stoila-speed');
+  const noteEl = $('stoila-note');
+
+  if (!catEl || !nameSelEl) return;
+
+  const category = catEl.value;
+  const nameSel = nameSelEl.value;
+  const nameManual = nameManualEl ? nameManualEl.value.trim() : '';
 
   let name = nameSel;
   if (nameSel === 'Другое') name = nameManual;
 
-  const gender = $('stoila-gender').value;
-  const nickname = $('stoila-nickname').value.trim();
-  const capacity = parseFloat($('stoila-capacity').value) || 0;
-  const speed = parseFloat($('stoila-speed').value) || 0;
-  const note = $('stoila-note').value;
+  const gender = genderEl ? genderEl.value : '';
+  const nickname = nickEl ? nickEl.value.trim() : '';
+  const capacity = capEl ? (parseFloat(capEl.value) || 0) : 0;
+  const speed = spdEl ? (parseFloat(spdEl.value) || 0) : 0;
+  const note = noteEl ? noteEl.value : '';
 
   if (!name) { if (errEl) errEl.textContent = 'Введите название'; return; }
 
@@ -302,14 +322,14 @@ export function addStoila() {
   persist();
 
   // Очистка формы
-  $('stoila-category').value = 'Животное';
+  catEl.value = 'Животное';
   updateNameOptions();
-  $('stoila-gender').value = '';
-  $('stoila-nickname').value = '';
-  $('stoila-capacity').value = '';
-  $('stoila-speed').value = '';
-  $('stoila-note').value = '';
-  $('stoila-name-manual').value = '';
+  if (genderEl) genderEl.value = '';
+  if (nickEl) nickEl.value = '';
+  if (capEl) capEl.value = '';
+  if (spdEl) spdEl.value = '';
+  if (noteEl) noteEl.value = '';
+  if (nameManualEl) nameManualEl.value = '';
 
   renderStoila();
 }
@@ -321,42 +341,58 @@ export function addStoila() {
 export function initStoilaHandlers() {
   // Фильтр
   const filterSel = $('stoila-filter');
-  CATEGORIES.forEach(c => {
-    const opt = document.createElement('option');
-    opt.value = c;
-    opt.textContent = c;
-    filterSel.appendChild(opt);
-  });
-  filterSel.addEventListener('change', renderStoila);
+  if (filterSel) {
+    CATEGORIES.forEach(c => {
+      const opt = document.createElement('option');
+      opt.value = c;
+      opt.textContent = c;
+      filterSel.appendChild(opt);
+    });
+    filterSel.addEventListener('change', renderStoila);
+  }
 
   // Категория → список названий
-  $('stoila-category').addEventListener('change', updateNameOptions);
+  const catEl = $('stoila-category');
+  if (catEl) catEl.addEventListener('change', updateNameOptions);
 
   // Список названий → пресет
-  $('stoila-name-select').addEventListener('change', () => {
-    const nameSel = $('stoila-name-select');
-    const nameManualWrapper = $('stoila-name-manual-wrapper');
-    if (nameSel.value === 'Другое') {
-      nameManualWrapper.style.display = 'flex';
-    } else {
-      nameManualWrapper.style.display = 'none';
-      $('stoila-name-manual').value = '';
-    }
-    applyPreset();
-  });
+  const nameSel = $('stoila-name-select');
+  if (nameSel) {
+    nameSel.addEventListener('change', () => {
+      const wrapper = $('stoila-name-manual-wrapper');
+      const manual = $('stoila-name-manual');
+      if (wrapper) {
+        if (nameSel.value === 'Другое') {
+          wrapper.style.display = 'flex';
+        } else {
+          wrapper.style.display = 'none';
+          if (manual) manual.value = '';
+        }
+      }
+      applyPreset();
+    });
+  }
 
-  // Кнопка «Добавить»
-  $('btn-add-stoila').addEventListener('click', addStoila);
+  // Кнопка «Добавить» (внутри формы)
+  const btnAdd = $('btn-add-stoila');
+  if (btnAdd) btnAdd.addEventListener('click', addStoila);
 
   // Сворачиваемая секция «Добавить»
-  $('stoila-form-header').addEventListener('click', () => {
-    const body = $('stoila-form-body');
-    const arrow = $('stoila-form-arrow');
-    const isOpen = body.style.display !== 'none';
-    body.style.display = isOpen ? 'none' : 'flex';
-    arrow.textContent = isOpen ? '▼' : '▲';
-  });
+  const formHeader = $('stoila-form-header');
+  const formBody = $('stoila-form-body');
+  const formArrow = $('stoila-form-arrow');
+  if (formHeader && formBody && formArrow) {
+    // По умолчанию свёрнута
+    formBody.style.display = 'none';
+    formArrow.textContent = '▼';
 
-  // Первичное заполнение
-  updateNameOptions();
+    formHeader.addEventListener('click', () => {
+      const isOpen = formBody.style.display !== 'none';
+      formBody.style.display = isOpen ? 'none' : 'flex';
+      formArrow.textContent = isOpen ? '▼' : '▲';
+    });
+  }
+
+  // Первичное заполнение (только если элементы есть)
+  if (catEl && nameSel) updateNameOptions();
 }
