@@ -717,3 +717,17 @@ button.warn:hover { background: #d08030; }
   .topbar { flex-direction: column; align-items: flex-start; }
   .topbar .date-line { text-align: left; }
 }
+/* ============================================================
+   СТОЙЛА — ДОПОЛНЕНИЯ
+   ============================================================ */
+
+.feed-row {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+.feed-row b { color: var(--text); }
+.feed-ok { color: var(--success); font-weight: 600; }
+.feed-empty { color: var(--error); font-weight: 600; }
+.feed-idle { color: var(--text-dim); font-weight: 600; }
