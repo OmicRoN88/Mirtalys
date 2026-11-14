@@ -745,3 +745,24 @@ button.warn:hover { background: #d08030; }
 .feed-ok { color: var(--success); font-weight: 600; }
 .feed-empty { color: var(--error); font-weight: 600; }
 .feed-idle { color: var(--text-dim); font-weight: 600; }
+
+/* ============================================================
+   ШАПКА — НАЗВАНИЕ ГИЛЬДИИ
+   ============================================================ */
+
+.guild-title {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--text);
+  letter-spacing: 0.3px;
+}
+.guild-title .guild-rank {
+  color: var(--gold);
+  font-weight: 700;
+}
+.topbar-right {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+}
