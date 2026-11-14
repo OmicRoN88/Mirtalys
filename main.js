@@ -33,6 +33,10 @@ import {
   renderStoila, initStoilaHandlers, chargeFeed
 } from './modules/stoila.js';
 
+import {
+  initPersonajHandlers
+} from './modules/personaj.js';
+
 /* ============================================================
    «МОСТИКИ»
    ============================================================ */
@@ -44,7 +48,7 @@ window.__checkOverdueMissions = checkOverdueMissions;
 window.__chargeFeed = chargeFeed;
 
 /* ============================================================
-   ШАПКА: РАНГ ГИЛЬДИИ
+   ШАПКА
    ============================================================ */
 
 export function renderHeader() {
@@ -117,6 +121,7 @@ initSkladHandlers();
 initTorgovcyHandlers();
 initMissionsHandlers();
 initStoilaHandlers();
+initPersonajHandlers();
 
 /* ============================================================
    ПЕРВИЧНАЯ ОТРИСОВКА
