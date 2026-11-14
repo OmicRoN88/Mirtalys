@@ -7,10 +7,10 @@ import {
   escapeHtml, escapeAttr, cssEscape
 } from './core.js';
 
-import { showConfirm, showPrompt } from './dialogi.js';
+import { showConfirm } from './dialogi.js';
 
 /* ============================================================
-   КОНСТАНТЫ СОСТОЯНИЙ
+   КОНСТАНТЫ
    ============================================================ */
 
 const CONDITIONS = [
@@ -38,7 +38,19 @@ function mustSkipTurn(c) {
   return c.conditions && c.conditions.some(cond => SKIP_TURN_CONDITIONS.includes(cond));
 }
 
-/* Мини-диалог для урона/исцеления */
+function rollD20() {
+  return Math.floor(Math.random() * 20) + 1;
+}
+
+/* Сбрасывает ресурсы, если существо использовало их в прошлых раундах */
+function resetOldResources(c, currentRound) {
+  if (!c.usedRound) c.usedRound = { action: 0, bonus: 0, reaction: 0 };
+  if (c.usedRound.action < currentRound) c.action = false;
+  if (c.usedRound.bonus < currentRound) c.bonus = false;
+  if (c.usedRound.reaction < currentRound) c.reaction = false;
+}
+
+/* Мини-диалог HP */
 function showHpDialog(combatant, onDone) {
   const overlay = document.createElement('div');
   overlay.className = 'dialog-overlay';
@@ -88,7 +100,7 @@ function showHpDialog(combatant, onDone) {
   });
 }
 
-/* Мини-диалог для КД */
+/* Мини-диалог КД */
 function showAcDialog(combatant, onDone) {
   const overlay = document.createElement('div');
   overlay.className = 'dialog-overlay';
@@ -135,6 +147,9 @@ export function renderEncounter() {
 
   const enc = state.encounter;
 
+  // Автоматический сброс старых ресурсов перед отрисовкой
+  enc.combatants.forEach(c => resetOldResources(c, enc.round));
+
   if (nextBtn) {
     if (enc.active) {
       nextBtn.textContent = 'Следующий ход';
@@ -162,7 +177,6 @@ export function renderEncounter() {
   sorted.forEach((c) => {
     const isActive = c.id === activeId;
     const dead = isDead(c);
-    const disabled = mustSkipTurn(c) && !dead;
     const expanded = c.expanded === true;
 
     let rowClass = 'encounter-row';
@@ -171,7 +185,6 @@ export function renderEncounter() {
     if (isActive) rowClass += ' active';
     if (!expanded) rowClass += ' collapsed';
 
-    // Бейджи состояний
     let statusBadges = '';
     if (dead) statusBadges += `<span class="enc-status danger">Мертв</span>`;
     if (c.conditions) {
@@ -180,7 +193,6 @@ export function renderEncounter() {
       });
     }
 
-    // Раскрытая часть
     const expandedPart = expanded ? `
       <div class="enc-resources">
         <label><input type="checkbox" data-res="action" data-id="${c.id}" ${c.action ? 'checked' : ''}> Действие</label>
@@ -273,10 +285,17 @@ export function renderEncounter() {
   container.querySelectorAll('[data-res]').forEach(el => {
     el.addEventListener('change', () => {
       const c = enc.combatants.find(x => x.id === el.dataset.id);
-      if (c) {
-        c[el.dataset.res] = el.checked;
-        persist();
+      if (!c) return;
+      const key = el.dataset.res;
+      c[key] = el.checked;
+      if (el.checked) {
+        if (!c.usedRound) c.usedRound = { action: 0, bonus: 0, reaction: 0 };
+        c.usedRound[key] = enc.round;
+      } else {
+        if (!c.usedRound) c.usedRound = { action: 0, bonus: 0, reaction: 0 };
+        c.usedRound[key] = 0;
       }
+      persist();
     });
   });
 
@@ -327,14 +346,19 @@ export function nextTurn() {
   const enc = state.encounter;
   if (!enc.combatants.length) return;
 
+  // Сворачиваем все карточки
+  enc.combatants.forEach(c => { c.expanded = false; });
+
   const sorted = [...enc.combatants].sort((a, b) => (b.initiative || 0) - (a.initiative || 0));
 
   if (!enc.active) {
+    // Начинаем бой
     enc.active = true;
     enc.round = 1;
     const first = sorted.findIndex(c => !mustSkipTurn(c));
     enc.turnIndex = first >= 0 ? first : 0;
   } else {
+    // Ищем следующего
     let nextIdx = enc.turnIndex + 1;
     let guard = 0;
     while (guard < 1000) {
@@ -353,13 +377,12 @@ export function nextTurn() {
     }
   }
 
-  // Сбрасываем ресурсы у текущего
+  // Раскрываем активную карточку
   const current = sorted[enc.turnIndex];
-  if (current) {
-    current.action = false;
-    current.bonus = false;
-    current.reaction = false;
-  }
+  if (current) current.expanded = true;
+
+  // Сбрасываем старые ресурсы
+  enc.combatants.forEach(c => resetOldResources(c, enc.round));
 
   persist();
   renderEncounter();
@@ -417,7 +440,8 @@ export function confirmAddPlayers() {
         reaction: false,
         status: 'alive',
         conditions: [],
-        expanded: false
+        expanded: false,
+        usedRound: { action: 0, bonus: 0, reaction: 0 }
       });
     }
   });
@@ -428,17 +452,18 @@ export function confirmAddPlayers() {
 }
 
 /* ============================================================
-   ДОБАВЛЕНИЕ ВРАГА (одна форма)
+   ДОБАВЛЕНИЕ ВРАГА
    ============================================================ */
 
 export function openAddEnemyModal() {
   const modal = $('modal-add-enemy');
   if (!modal) return;
-  // Сброс полей
   $('enemy-name').value = 'Гоблин';
+  $('enemy-count').value = '1';
   $('enemy-hp').value = '7';
   $('enemy-ac').value = '15';
-  $('enemy-init').value = '';
+  $('enemy-init-bonus').value = '0';
+  $('enemy-roll-d20').checked = true;
   const errEl = $('enemy-error');
   if (errEl) errEl.textContent = '';
   modal.style.display = 'flex';
@@ -449,32 +474,40 @@ export function confirmAddEnemy() {
   if (errEl) errEl.textContent = '';
 
   const name = $('enemy-name').value.trim();
+  const count = parseInt($('enemy-count').value, 10);
   const hp = parseInt($('enemy-hp').value, 10);
   const ac = parseInt($('enemy-ac').value, 10);
-  const initStr = $('enemy-init').value.trim();
-  const initiative = initStr === '' ? Math.floor(Math.random() * 20) + 1 : parseInt(initStr, 10) || 0;
+  const initBonus = parseInt($('enemy-init-bonus').value, 10) || 0;
+  const rollD20Checked = $('enemy-roll-d20').checked;
 
   if (!name) { if (errEl) errEl.textContent = 'Введите имя'; return; }
+  if (isNaN(count) || count < 1) { if (errEl) errEl.textContent = 'Количество должно быть ≥ 1'; return; }
   if (isNaN(hp) || hp < 1) { if (errEl) errEl.textContent = 'HP должно быть ≥ 1'; return; }
   if (isNaN(ac) || ac < 1) { if (errEl) errEl.textContent = 'КД должно быть ≥ 1'; return; }
 
-  state.encounter.combatants.push({
-    id: Date.now() + '_' + Math.random().toString(36).slice(2, 6),
-    refId: null,
-    name,
-    isEnemy: true,
-    initiative,
-    hp,
-    maxHp: hp,
-    tempHp: 0,
-    ac,
-    action: false,
-    bonus: false,
-    reaction: false,
-    status: 'alive',
-    conditions: [],
-    expanded: false
-  });
+  for (let i = 1; i <= count; i++) {
+    const displayName = count > 1 ? `${name} ${i}` : name;
+    const initiative = rollD20Checked ? (rollD20() + initBonus) : 0;
+    state.encounter.combatants.push({
+      id: Date.now() + '_' + Math.random().toString(36).slice(2, 6) + '_' + i,
+      refId: null,
+      name: displayName,
+      isEnemy: true,
+      initiative,
+      hp,
+      maxHp: hp,
+      tempHp: 0,
+      ac,
+      action: false,
+      bonus: false,
+      reaction: false,
+      status: 'alive',
+      conditions: [],
+      expanded: false,
+      usedRound: { action: 0, bonus: 0, reaction: 0 }
+    });
+  }
+
   persist();
   $('modal-add-enemy').style.display = 'none';
   renderEncounter();
@@ -509,7 +542,6 @@ export function initEncounterHandlers() {
   const btnReset = $('btn-reset-enc');
   if (btnReset) btnReset.addEventListener('click', resetEncounter);
 
-  // Модалка выбора игроков
   const btnConfirmPlayers = $('btn-confirm-add-players');
   if (btnConfirmPlayers) btnConfirmPlayers.addEventListener('click', confirmAddPlayers);
   const btnCancelPlayers = $('btn-cancel-add-players');
@@ -517,7 +549,6 @@ export function initEncounterHandlers() {
     $('modal-add-players').style.display = 'none';
   });
 
-  // Модалка добавления врага
   const btnConfirmEnemy = $('btn-confirm-add-enemy');
   if (btnConfirmEnemy) btnConfirmEnemy.addEventListener('click', confirmAddEnemy);
   const btnCancelEnemy = $('btn-cancel-add-enemy');
