@@ -6,7 +6,8 @@ import {
   $, state, persist,
   escapeHtml, escapeAttr, cssEscape,
   ensureAccount, formatMoney,
-  DND_CLASSES, DND_LEVELS
+  DND_CLASSES, DND_LEVELS,
+  getMaxPlayerLevel
 } from './core.js';
 
 import { showConfirm } from './dialogi.js';
@@ -19,47 +20,32 @@ export function getPlayers() {
   return state.members.filter(m => m.type === 'Игрок' && !m.fired);
 }
 
+function getEffectiveLevel(m) {
+  if (m.type === 'НИП') return getMaxPlayerLevel();
+  return m.level || 1;
+}
+
 function buildMemberSubtitle(m) {
   const parts = [];
+  const isNPC = m.type === 'НИП';
 
-  if (m.rank) parts.push(`Звание: ${m.rank}`);
+  if (!isNPC && m.rank) parts.push(`Звание: ${m.rank}`);
   if (m.species) parts.push(m.species);
-
-  if (m.classes && m.classes.length) {
+  if (!isNPC && m.classes && m.classes.length) {
     const cls = m.classes.filter(c => c && c.trim());
     if (cls.length) parts.push(cls.join('/'));
   }
 
-  if (m.level) parts.push(`${m.level} уровень`);
+  const lvl = getEffectiveLevel(m);
+  if (lvl) parts.push(`${lvl} уровень`);
+
   if (m.position) parts.push(`Профессия: ${m.position}`);
 
   return parts.join('. ');
 }
 
-function saveMemberFieldsFromDOM(list, m, id) {
-  const rankEl = list.querySelector(`[data-field="rank"][data-id="${cssEscape(id)}"]`);
-  const posEl = list.querySelector(`[data-field="position"][data-id="${cssEscape(id)}"]`);
-  const speciesEl = list.querySelector(`[data-field="species"][data-id="${cssEscape(id)}"]`);
-  const infoEl = list.querySelector(`[data-field="info"][data-id="${cssEscape(id)}"]`);
-  const levelEl = list.querySelector(`[data-field="level"][data-id="${cssEscape(id)}"]`);
-  const c1El = list.querySelector(`[data-field="class1"][data-id="${cssEscape(id)}"]`);
-  const c2El = list.querySelector(`[data-field="class2"][data-id="${cssEscape(id)}"]`);
-
-  if (rankEl) m.rank = rankEl.value.trim();
-  if (posEl) m.position = posEl.value.trim();
-  if (speciesEl) m.species = speciesEl.value.trim();
-  if (infoEl) m.info = infoEl.value;
-  if (levelEl) {
-    const lvl = parseInt(levelEl.value, 10);
-    m.level = isNaN(lvl) ? 1 : lvl;
-  }
-  if (!Array.isArray(m.classes)) m.classes = [];
-  if (c1El) m.classes[0] = c1El.value || '';
-  if (c2El) m.classes[1] = c2El.value || '';
-}
-
 /* ============================================================
-   ОТРИСОВКА СПИСКА УЧАСТНИКОВ
+   ОТРИСОВКА СПИСКА
    ============================================================ */
 
 export function renderMembers() {
@@ -85,6 +71,7 @@ export function renderMembers() {
 
     const roleLabel = m.fired ? 'Уволен' : m.type;
     const subtitle = buildMemberSubtitle(m);
+    const isNPC = m.type === 'НИП';
 
     const arrow = m.expanded ? '▲' : '▼';
 
@@ -100,8 +87,9 @@ export function renderMembers() {
       `<option value="${escapeAttr(c)}" ${c === c2 ? 'selected' : ''}>${escapeHtml(c)}</option>`
     ).join('');
 
+    const effectiveLevel = getEffectiveLevel(m);
     const levelOptions = DND_LEVELS.map(l =>
-      `<option value="${l}" ${l === m.level ? 'selected' : ''}>${l}</option>`
+      `<option value="${l}" ${l === effectiveLevel ? 'selected' : ''}>${l}</option>`
     ).join('');
 
     card.innerHTML = `
@@ -116,12 +104,18 @@ export function renderMembers() {
       <div class="mc-body ${m.expanded ? 'open' : ''}" id="body-${m.id}">
         <div class="row">
           <div class="field">
+            <label>Имя</label>
+            <input type="text" data-field="name" data-id="${m.id}" value="${escapeAttr(m.name)}">
+          </div>
+          ${!isNPC ? `
+          <div class="field">
             <label>Звание</label>
             <input type="text" data-field="rank" data-id="${m.id}" value="${escapeAttr(m.rank)}" placeholder="Например, Капитан">
           </div>
+          ` : ''}
           <div class="field">
             <label>Профессия</label>
-            <input type="text" data-field="position" data-id="${m.id}" value="${escapeAttr(m.position)}" placeholder="Например, Управляющий">
+            <input type="text" data-field="position" data-id="${m.id}" value="${escapeAttr(m.position)}" placeholder="Кузнец, алхимик...">
           </div>
         </div>
         <div class="row">
@@ -129,13 +123,21 @@ export function renderMembers() {
             <label>Вид</label>
             <input type="text" data-field="species" data-id="${m.id}" value="${escapeAttr(m.species)}" placeholder="Человек, эльф, орк...">
           </div>
+          ${isNPC ? `
+          <div class="field">
+            <label>Уровень</label>
+            <input type="text" value="${effectiveLevel} (макс. у игроков)" disabled style="color: var(--text-dim);">
+          </div>
+          ` : `
           <div class="field">
             <label>Уровень</label>
             <select data-field="level" data-id="${m.id}">
               ${levelOptions}
             </select>
           </div>
+          `}
         </div>
+        ${!isNPC ? `
         <div class="row">
           <div class="field" style="grid-column: span 2;">
             <label>Класс</label>
@@ -158,6 +160,7 @@ export function renderMembers() {
             </div>
           </div>
         </div>
+        ` : ''}
         <div class="field" style="margin-top: 10px;">
           <label>Краткая информация</label>
           <textarea data-field="info" data-id="${m.id}" placeholder="Возраст, происхождение, особенности...">${escapeHtml(m.info)}</textarea>
@@ -174,7 +177,8 @@ export function renderMembers() {
     list.appendChild(card);
   });
 
-  // Раскрытие/сворачивание
+  // ---------- Обработчики ----------
+
   list.querySelectorAll('[data-toggle]').forEach(el => {
     el.addEventListener('click', (e) => {
       if (e.target.closest('button')) return;
@@ -186,33 +190,25 @@ export function renderMembers() {
     });
   });
 
-  // Кнопка «+»
   list.querySelectorAll('[data-add-class]').forEach(btn => {
     btn.addEventListener('click', () => {
       const id = btn.dataset.addClass;
       const m = state.members.find(x => x.id === id);
       if (!m) return;
-
       saveMemberFieldsFromDOM(list, m, id);
-
       if (!Array.isArray(m.classes)) m.classes = [];
-      if (m.classes.length < 2) {
-        m.classes[1] = '';
-      }
+      if (m.classes.length < 2) m.classes[1] = '';
       persist();
       renderMembers();
     });
   });
 
-  // Кнопка «−»
   list.querySelectorAll('[data-remove-class]').forEach(btn => {
     btn.addEventListener('click', () => {
       const id = btn.dataset.removeClass;
       const m = state.members.find(x => x.id === id);
       if (!m) return;
-
       saveMemberFieldsFromDOM(list, m, id);
-
       if (Array.isArray(m.classes) && m.classes.length > 1) {
         m.classes = [m.classes[0]];
       }
@@ -221,26 +217,49 @@ export function renderMembers() {
     });
   });
 
-  // Сохранение
   list.querySelectorAll('[data-save]').forEach(btn => {
     btn.addEventListener('click', () => {
       const id = btn.dataset.save;
       const m = state.members.find(x => x.id === id);
       if (!m) return;
 
-      saveMemberFieldsFromDOM(list, m, id);
+      const nameEl = list.querySelector(`[data-field="name"][data-id="${cssEscape(id)}"]`);
+      const newName = nameEl ? nameEl.value.trim() : m.name;
 
-      m.classes = m.classes.filter(c => c && c.trim());
-      if (m.classes.length > 1 && m.classes[0] === m.classes[1]) {
-        m.classes = [m.classes[0]];
+      if (!newName) {
+        alert('Имя не может быть пустым');
+        return;
       }
+
+      // Если имя изменилось и это Игрок — переносим счёт
+      if (newName !== m.name && m.type === 'Игрок') {
+        if (state.accounts[m.name]) {
+          state.accounts[newName] = state.accounts[m.name];
+          delete state.accounts[m.name];
+        } else {
+          ensureAccount(newName);
+        }
+      }
+
+      // Проверка на дубликат имени
+      if (newName !== m.name) {
+        const dup = state.members.find(x => x.id !== id && x.name.toLowerCase() === newName.toLowerCase());
+        if (dup) {
+          alert('Персонаж с таким именем уже есть');
+          return;
+        }
+      }
+
+      m.name = newName;
+      saveMemberFieldsFromDOM(list, m, id);
 
       persist();
       renderMembers();
+      if (typeof window.__renderBank === 'function') window.__renderBank();
+      if (typeof window.__renderHeader === 'function') window.__renderHeader();
     });
   });
 
-  // Кнопки
   list.querySelectorAll('[data-fire]').forEach(btn => {
     btn.addEventListener('click', () => fireMember(btn.dataset.fire));
   });
@@ -252,8 +271,34 @@ export function renderMembers() {
   });
 }
 
+// Считывает поля карточки из DOM в объект m
+function saveMemberFieldsFromDOM(list, m, id) {
+  const rankEl = list.querySelector(`[data-field="rank"][data-id="${cssEscape(id)}"]`);
+  const posEl = list.querySelector(`[data-field="position"][data-id="${cssEscape(id)}"]`);
+  const speciesEl = list.querySelector(`[data-field="species"][data-id="${cssEscape(id)}"]`);
+  const infoEl = list.querySelector(`[data-field="info"][data-id="${cssEscape(id)}"]`);
+  const levelEl = list.querySelector(`[data-field="level"][data-id="${cssEscape(id)}"]`);
+  const c1El = list.querySelector(`[data-field="class1"][data-id="${cssEscape(id)}"]`);
+  const c2El = list.querySelector(`[data-field="class2"][data-id="${cssEscape(id)}"]`);
+
+  if (rankEl) m.rank = rankEl.value.trim();
+  if (posEl) m.position = posEl.value.trim();
+  if (speciesEl) m.species = speciesEl.value.trim();
+  if (infoEl) m.info = infoEl.value;
+
+  if (m.type === 'Игрок') {
+    if (levelEl) {
+      const lvl = parseInt(levelEl.value, 10);
+      m.level = isNaN(lvl) ? 1 : lvl;
+    }
+    if (!Array.isArray(m.classes)) m.classes = [];
+    if (c1El) m.classes[0] = c1El.value || '';
+    if (c2El) m.classes[1] = c2El.value || '';
+  }
+}
+
 /* ============================================================
-   ДОБАВЛЕНИЕ УЧАСТНИКА
+   ДОБАВЛЕНИЕ
    ============================================================ */
 
 export function addMember(name, type) {
@@ -275,25 +320,28 @@ export function addMember(name, type) {
       $('member-name').value = '';
       renderMembers();
       if (typeof window.__renderBank === 'function') window.__renderBank();
+      if (typeof window.__renderHeader === 'function') window.__renderHeader();
       return;
     }
     if (errEl) errEl.textContent = 'Персонаж с таким именем уже есть';
     return;
   }
 
-  state.members.push({
+  const newMember = {
     id: Date.now() + '_' + Math.random().toString(36).slice(2, 7),
     name, type, fired: false,
     rank: '', position: '', info: '', expanded: false,
     species: '',
     classes: [],
-    level: 1
-  });
+    level: type === 'Игрок' ? 1 : getMaxPlayerLevel()
+  };
+  state.members.push(newMember);
   if (type === 'Игрок') ensureAccount(name);
   persist();
   $('member-name').value = '';
   renderMembers();
   if (typeof window.__renderBank === 'function') window.__renderBank();
+  if (typeof window.__renderHeader === 'function') window.__renderHeader();
 }
 
 /* ============================================================
@@ -325,6 +373,7 @@ export async function fireMember(id) {
   persist();
   renderMembers();
   if (typeof window.__renderBank === 'function') window.__renderBank();
+  if (typeof window.__renderHeader === 'function') window.__renderHeader();
 }
 
 export function hireMember(id) {
@@ -335,6 +384,7 @@ export function hireMember(id) {
   persist();
   renderMembers();
   if (typeof window.__renderBank === 'function') window.__renderBank();
+  if (typeof window.__renderHeader === 'function') window.__renderHeader();
 }
 
 export async function deleteMember(id) {
@@ -347,6 +397,7 @@ export async function deleteMember(id) {
   persist();
   renderMembers();
   if (typeof window.__renderBank === 'function') window.__renderBank();
+  if (typeof window.__renderHeader === 'function') window.__renderHeader();
 }
 
 /* ============================================================
