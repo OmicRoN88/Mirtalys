@@ -29,7 +29,7 @@ function buildMemberSubtitle(m) {
   const parts = [];
   const isNPC = m.type === 'НИП';
 
-  if (!isNPC && m.rank) parts.push(`Звание: ${m.rank}`);
+  if (isNPC && m.rank) parts.push(`Звание: ${m.rank}`);
   if (m.species) parts.push(m.species);
   if (!isNPC && m.classes && m.classes.length) {
     const cls = m.classes.filter(c => c && c.trim());
@@ -107,12 +107,6 @@ export function renderMembers() {
             <label>Имя</label>
             <input type="text" data-field="name" data-id="${m.id}" value="${escapeAttr(m.name)}">
           </div>
-          ${!isNPC ? `
-          <div class="field">
-            <label>Звание</label>
-            <input type="text" data-field="rank" data-id="${m.id}" value="${escapeAttr(m.rank)}" placeholder="Например, Капитан">
-          </div>
-          ` : ''}
           <div class="field">
             <label>Профессия</label>
             <input type="text" data-field="position" data-id="${m.id}" value="${escapeAttr(m.position)}" placeholder="Кузнец, алхимик...">
@@ -125,8 +119,8 @@ export function renderMembers() {
           </div>
           ${isNPC ? `
           <div class="field">
-            <label>Уровень</label>
-            <input type="text" value="${effectiveLevel} (макс. у игроков)" disabled style="color: var(--text-dim);">
+            <label>Звание</label>
+            <input type="text" data-field="rank" data-id="${m.id}" value="${escapeAttr(m.rank)}" placeholder="Например, Капитан">
           </div>
           ` : `
           <div class="field">
@@ -231,26 +225,24 @@ export function renderMembers() {
         return;
       }
 
-      // Если имя изменилось и это Игрок — переносим счёт
-      if (newName !== m.name && m.type === 'Игрок') {
-        if (state.accounts[m.name]) {
-          state.accounts[newName] = state.accounts[m.name];
-          delete state.accounts[m.name];
-        } else {
-          ensureAccount(newName);
-        }
-      }
-
-      // Проверка на дубликат имени
       if (newName !== m.name) {
         const dup = state.members.find(x => x.id !== id && x.name.toLowerCase() === newName.toLowerCase());
         if (dup) {
           alert('Персонаж с таким именем уже есть');
           return;
         }
+        // Перенос счёта при смене имени Игрока
+        if (m.type === 'Игрок') {
+          if (state.accounts[m.name]) {
+            state.accounts[newName] = state.accounts[m.name];
+            delete state.accounts[m.name];
+          } else {
+            ensureAccount(newName);
+          }
+        }
+        m.name = newName;
       }
 
-      m.name = newName;
       saveMemberFieldsFromDOM(list, m, id);
 
       persist();
@@ -271,7 +263,6 @@ export function renderMembers() {
   });
 }
 
-// Считывает поля карточки из DOM в объект m
 function saveMemberFieldsFromDOM(list, m, id) {
   const rankEl = list.querySelector(`[data-field="rank"][data-id="${cssEscape(id)}"]`);
   const posEl = list.querySelector(`[data-field="position"][data-id="${cssEscape(id)}"]`);
@@ -298,49 +289,22 @@ function saveMemberFieldsFromDOM(list, m, id) {
 }
 
 /* ============================================================
-   ДОБАВЛЕНИЕ
+   ДОБАВЛЕНИЕ НИПА
    ============================================================ */
 
-export function addMember(name, type) {
-  const errEl = $('members-error');
-  if (errEl) errEl.textContent = '';
-
-  name = (name || '').trim();
-  if (!name) {
-    if (errEl) errEl.textContent = 'Введите имя';
-    return;
-  }
-
-  const existing = state.members.find(m => m.name.toLowerCase() === name.toLowerCase());
-  if (existing) {
-    if (existing.fired) {
-      existing.fired = false;
-      existing.type = type;
-      persist();
-      $('member-name').value = '';
-      renderMembers();
-      if (typeof window.__renderBank === 'function') window.__renderBank();
-      if (typeof window.__renderHeader === 'function') window.__renderHeader();
-      return;
-    }
-    if (errEl) errEl.textContent = 'Персонаж с таким именем уже есть';
-    return;
-  }
-
-  const newMember = {
-    id: Date.now() + '_' + Math.random().toString(36).slice(2, 7),
-    name, type, fired: false,
-    rank: '', position: '', info: '', expanded: false,
+export function addNPC() {
+  const id = Date.now() + '_' + Math.random().toString(36).slice(2, 7);
+  state.members.push({
+    id,
+    name: 'Новый НИП',
+    type: 'НИП', fired: false,
+    rank: '', position: '', info: '', expanded: true,
     species: '',
     classes: [],
-    level: type === 'Игрок' ? 1 : getMaxPlayerLevel()
-  };
-  state.members.push(newMember);
-  if (type === 'Игрок') ensureAccount(name);
+    level: getMaxPlayerLevel()
+  });
   persist();
-  $('member-name').value = '';
   renderMembers();
-  if (typeof window.__renderBank === 'function') window.__renderBank();
   if (typeof window.__renderHeader === 'function') window.__renderHeader();
 }
 
@@ -405,11 +369,6 @@ export async function deleteMember(id) {
    ============================================================ */
 
 export function initSostavHandlers() {
-  $('btn-add-member').addEventListener('click', () => {
-    addMember($('member-name').value, $('member-type').value);
-  });
-
-  $('member-name').addEventListener('keydown', e => {
-    if (e.key === 'Enter') $('btn-add-member').click();
-  });
+  const btn = $('btn-add-npc');
+  if (btn) btn.addEventListener('click', addNPC);
 }
