@@ -65,6 +65,39 @@
   </div>
 </div>
 
+<!-- ================= МОДАЛЬНОЕ ОКНО: ДОБАВИТЬ ВРАГА ================= -->
+<div class="modal-overlay" id="modal-add-enemy" style="display:none;">
+  <div class="modal">
+    <button class="modal-close" data-close>×</button>
+    <h2>Добавить врага</h2>
+
+    <div class="row">
+      <div class="field" style="grid-column: span 2;">
+        <label for="enemy-name">Имя</label>
+        <input type="text" id="enemy-name" placeholder="Гоблин">
+      </div>
+      <div class="field">
+        <label for="enemy-hp">Макс. HP</label>
+        <input type="number" id="enemy-hp" min="1" step="1" value="7">
+      </div>
+      <div class="field">
+        <label for="enemy-ac">КД</label>
+        <input type="number" id="enemy-ac" min="1" step="1" value="15">
+      </div>
+      <div class="field">
+        <label for="enemy-init">Инициатива</label>
+        <input type="number" id="enemy-init" min="-10" step="1" placeholder="Пусто = бросок d20">
+      </div>
+    </div>
+
+    <div class="actions" style="margin-top: 12px;">
+      <button id="btn-confirm-add-enemy" class="success-btn">Добавить</button>
+      <button id="btn-cancel-add-enemy" class="secondary">Отмена</button>
+    </div>
+    <div class="error" id="enemy-error"></div>
+  </div>
+</div>
+
 <!-- ================= МОДАЛЬНОЕ ОКНО: СОСТАВ ================= -->
 <div class="modal-overlay" id="modal-members" style="display:none;">
   <div class="modal">
