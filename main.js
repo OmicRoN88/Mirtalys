@@ -2,7 +2,7 @@
    MAIN.JS — Точка входа Мирталиса
    ============================================================ */
 
-import { $ } from './modules/core.js';
+import { $, getGuildRank } from './modules/core.js';
 
 import {
   updateDateDisplay, fillDateInputs, initDateSelects, initDateHandlers
@@ -42,6 +42,19 @@ window.__renderExpenseInfo = renderExpenseInfo;
 window.__renderMissions = renderMissions;
 window.__checkOverdueMissions = checkOverdueMissions;
 window.__chargeFeed = chargeFeed;
+
+/* ============================================================
+   ШАПКА: РАНГ ГИЛЬДИИ
+   ============================================================ */
+
+export function renderHeader() {
+  const el = $('guild-title');
+  if (!el) return;
+  const rank = getGuildRank();
+  el.innerHTML = `Гильдия <span class="guild-rank">${rank}-ранга</span> «Клинки зари»`;
+}
+
+window.__renderHeader = renderHeader;
 
 /* ============================================================
    ОТКРЫТИЕ / ЗАКРЫТИЕ МОДАЛЬНЫХ ОКОН
@@ -110,5 +123,6 @@ initStoilaHandlers();
    ============================================================ */
 
 updateDateDisplay();
+renderHeader();
 renderMembers();
 renderBank();
