@@ -20,14 +20,17 @@ const CONDITIONS = [
   'Ошеломлённый', 'Парализованный', 'Схваченный'
 ];
 
-const SKIP_TURN_CONDITIONS = [
+// Состояния, при которых существо не может действовать
+const INCAPACITATED_CONDITIONS = [
   'Бессознательный', 'Недееспособный', 'Окаменевший',
   'Ошеломлённый', 'Парализованный'
 ];
 
-/* ============================================================
-   ВСПОМОГАТЕЛЬНЫЕ
-   ============================================================ */
+function isIncapacitated(c) {
+  if (isDead(c)) return true;
+  if (isUnconscious(c)) return true;
+  return c.conditions && c.conditions.some(cond => INCAPACITATED_CONDITIONS.includes(cond));
+}
 
 function isDead(c) { return c.status === 'dead'; }
 function isUnconscious(c) { return c.status === 'unconscious'; }
@@ -37,7 +40,7 @@ function mustSkipTurn(c) {
   if (isDead(c)) return true;
   if (isUnconscious(c)) return false;
   if (isStable(c)) return true;
-  return c.conditions && c.conditions.some(cond => SKIP_TURN_CONDITIONS.includes(cond));
+  return c.conditions && c.conditions.some(cond => INCAPACITATED_CONDITIONS.includes(cond));
 }
 
 function rollD20() {
@@ -86,21 +89,17 @@ function showHpDialog(combatant, onDone) {
       <p>${escapeHtml(combatant.name)}<br>
         HP: ${combatant.hp}/${combatant.maxHp}${combatant.tempHp ? ` <span style="color:var(--accent);">THP: ${combatant.tempHp}</span>` : ''}
       </p>
-      <input type="number" id="hp-dialog-input" min="0" placeholder="Значение" style="margin-bottom: 12px;">
-      <div class="field" style="margin-bottom: 16px; flex-direction: row; align-items: center; gap: 8px;">
-        <input type="checkbox" id="hp-dialog-temp" style="width:auto;">
-        <label for="hp-dialog-temp" style="text-transform:none; font-size:0.9rem; color:var(--text);">Это временные HP (THP)</label>
-      </div>
+      <input type="number" id="hp-dialog-input" min="0" placeholder="Значение" style="margin-bottom: 16px;">
       <div class="dialog-actions">
         <button class="secondary" data-cancel>Отмена</button>
         <button class="danger" data-damage>Урон</button>
         <button class="success-btn" data-heal>Исцеление</button>
+        <button class="warn" data-thp>Временные ХП</button>
       </div>
     </div>
   `;
   document.body.appendChild(overlay);
   const input = overlay.querySelector('#hp-dialog-input');
-  const tempCheck = overlay.querySelector('#hp-dialog-temp');
   input.focus();
   const close = () => overlay.remove();
 
@@ -110,8 +109,7 @@ function showHpDialog(combatant, onDone) {
   overlay.querySelector('[data-damage]').addEventListener('click', () => {
     const val = parseInt(input.value, 10);
     if (isNaN(val) || val <= 0) return;
-    if (tempCheck.checked) combatant.tempHp = val;
-    else applyDamage(combatant, val, null);
+    applyDamage(combatant, val, null);
     persist();
     close();
     onDone();
@@ -120,8 +118,16 @@ function showHpDialog(combatant, onDone) {
   overlay.querySelector('[data-heal]').addEventListener('click', () => {
     const val = parseInt(input.value, 10);
     if (isNaN(val) || val <= 0) return;
-    if (tempCheck.checked) combatant.tempHp = val;
-    else applyHeal(combatant, val, null);
+    applyHeal(combatant, val, null);
+    persist();
+    close();
+    onDone();
+  });
+
+  overlay.querySelector('[data-thp]').addEventListener('click', () => {
+    const val = parseInt(input.value, 10);
+    if (isNaN(val) || val <= 0) return;
+    combatant.tempHp = val;
     persist();
     close();
     onDone();
@@ -137,12 +143,13 @@ function showAcDialog(combatant, onDone) {
   overlay.className = 'dialog-overlay';
   overlay.innerHTML = `
     <div class="dialog">
-      <p>${escapeHtml(combatant.name)} — КД: <b>${combatant.ac}</b></p>
+      <p>${escapeHtml(combatant.name)} — КД: <b id="ac-display">${combatant.ac}</b></p>
       <div style="display: flex; gap: 8px; justify-content: center; margin-bottom: 16px; flex-wrap: wrap;">
         <button class="danger" data-ac="-2">−2 КД</button>
         <button class="danger" data-ac="-1">−1 КД</button>
         <button class="success-btn" data-ac="+1">+1 КД</button>
         <button class="success-btn" data-ac="+2">+2 КД</button>
+        <button class="warn" data-ac="+2-shield">Щит +2</button>
       </div>
       <div class="dialog-actions">
         <button class="secondary" data-cancel>Закрыть</button>
@@ -150,6 +157,7 @@ function showAcDialog(combatant, onDone) {
     </div>
   `;
   document.body.appendChild(overlay);
+  const acDisplay = overlay.querySelector('#ac-display');
   const close = () => overlay.remove();
 
   overlay.querySelector('[data-cancel]').addEventListener('click', close);
@@ -157,11 +165,16 @@ function showAcDialog(combatant, onDone) {
 
   overlay.querySelectorAll('[data-ac]').forEach(btn => {
     btn.addEventListener('click', () => {
-      const delta = parseInt(btn.dataset.ac, 10);
-      combatant.ac += delta;
+      const val = btn.dataset.ac;
+      if (val === '+2-shield') {
+        combatant.ac += 2;
+      } else {
+        const delta = parseInt(val, 10);
+        combatant.ac += delta;
+      }
+      acDisplay.textContent = combatant.ac;
       persist();
-      close();
-      onDone();
+      // Не закрываем меню — ждём "Закрыть"
     });
   });
 }
@@ -173,22 +186,16 @@ function showAcDialog(combatant, onDone) {
 function applyDamage(target, val, sourceLog) {
   let dmg = val;
 
-  // Сначала THP
   if (target.tempHp > 0) {
     const absorbed = Math.min(target.tempHp, dmg);
     target.tempHp -= absorbed;
     dmg -= absorbed;
   }
 
-  // Оставшийся урон, который пойдёт в HP
   const damageToHp = dmg;
   const currentHp = target.hp;
   const maxHp = target.maxHp;
-
-  // Условие мгновенной смерти: урон (после THP) >= текущий HP + максимальный HP
-  // Например: HP 10/10, урон 20 → 20 >= 10 + 10 → смерть
   const isMassiveDeath = !target.isEnemy && damageToHp >= currentHp + maxHp;
-
   const newHp = currentHp - damageToHp;
 
   if (newHp <= 0) {
@@ -201,11 +208,9 @@ function applyDamage(target, val, sourceLog) {
       }
     } else {
       if (isMassiveDeath) {
-        // Мгновенная смерть
         target.status = 'dead';
         if (sourceLog) sourceLog.kills += 1;
       } else if (target.status === 'unconscious' || target.status === 'stable') {
-        // Уже без сознания — +2 провала
         ensureDeathSaves(target);
         target.deathSaves.failures = Math.min(3, target.deathSaves.failures + 2);
         if (target.deathSaves.failures >= 3) {
@@ -213,7 +218,6 @@ function applyDamage(target, val, sourceLog) {
           if (sourceLog) sourceLog.kills += 1;
         }
       } else {
-        // Только что упал без сознания
         target.status = 'unconscious';
         ensureDeathSaves(target);
       }
@@ -223,6 +227,27 @@ function applyDamage(target, val, sourceLog) {
   }
 
   if (sourceLog) sourceLog.damage += val;
+
+  // Проверка концентрации
+  if (target.concentration && val > 0) {
+    const dc = Math.max(10, Math.floor(val / 2));
+    setTimeout(() => {
+      const dlg = document.createElement('div');
+      dlg.className = 'dialog-overlay';
+      dlg.innerHTML = `
+        <div class="dialog">
+          <p><b>${escapeHtml(target.name)}</b> поддерживает концентрацию.</p>
+          <p style="color: var(--warning); font-weight: 600;">Требуется проверка Телосложения СЛ ${dc}</p>
+          <div class="dialog-actions">
+            <button data-ok>Понятно</button>
+          </div>
+        </div>
+      `;
+      document.body.appendChild(dlg);
+      dlg.querySelector('[data-ok]').addEventListener('click', () => dlg.remove());
+      dlg.addEventListener('click', e => { if (e.target === dlg) dlg.remove(); });
+    }, 100);
+  }
 }
 
 function applyHeal(target, val, sourceLog) {
@@ -273,15 +298,10 @@ function openDamageModal(sourceId, mode) {
   const source = enc.combatants.find(c => c.id === sourceId);
   const sourceIsEnemy = source ? source.isEnemy : false;
 
-  // Сортировка целей:
-  // Если источник — враг: сперва игроки, потом враги
-  // Если источник — игрок: сперва враги, потом игроки
   const sorted = [...enc.combatants].sort((a, b) => {
     if (sourceIsEnemy) {
-      // Игроки (isEnemy=false) идут первыми
       if (a.isEnemy !== b.isEnemy) return a.isEnemy ? 1 : -1;
     } else {
-      // Враги (isEnemy=true) идут первыми
       if (a.isEnemy !== b.isEnemy) return a.isEnemy ? -1 : 1;
     }
     return (b.initiative || 0) - (a.initiative || 0);
@@ -394,6 +414,7 @@ export function renderEncounter() {
     const expanded = c.expanded === true;
     const hpClass = getHpColorClass(c);
     const lowHp = c.hp > 0 && c.hp <= c.maxHp * 0.5;
+    const incap = isIncapacitated(c);
 
     let rowClass = 'encounter-row';
     rowClass += c.isEnemy ? ' enemy' : ' player';
@@ -416,20 +437,25 @@ export function renderEncounter() {
     if (unconscious && !c.isEnemy) {
       ensureDeathSaves(c);
       const canAdd = c.lastSaveRound !== enc.round;
+      const btnStyle = canAdd ? '' : 'disabled style="opacity:0.4; cursor:not-allowed;"';
       deathSavesHtml = `
         <div class="death-saves">
           <div class="death-save-row">
             <span class="death-save-label success-label">Успехи</span>
-            <div class="death-save-cells" data-save-block="success" data-id="${c.id}">
+            <div class="death-save-cells" data-id="${c.id}">
               ${[0,1,2].map(i => `<span class="death-cell ${i < c.deathSaves.successes ? 'filled success' : ''}"></span>`).join('')}
             </div>
-            ${canAdd ? `<span class="death-save-hint">клик — +1 (макс 2 за раунд)</span>` : `<span class="death-save-hint" style="color:var(--text-dim);">уже бросали в этом раунде</span>`}
+            <button class="small success-btn" data-save="${c.id}" data-save-type="success" data-save-amount="1" ${btnStyle}>+1</button>
+            <button class="small success-btn" data-save="${c.id}" data-save-type="success" data-save-amount="2" ${btnStyle}>+2</button>
+            ${!canAdd ? '<span class="death-save-hint" style="color:var(--text-dim);">уже бросали</span>' : ''}
           </div>
           <div class="death-save-row">
             <span class="death-save-label failure-label">Провалы</span>
-            <div class="death-save-cells" data-save-block="failure" data-id="${c.id}">
+            <div class="death-save-cells" data-id="${c.id}">
               ${[0,1,2].map(i => `<span class="death-cell ${i < c.deathSaves.failures ? 'filled failure' : ''}"></span>`).join('')}
             </div>
+            <button class="small danger" data-save="${c.id}" data-save-type="failure" data-save-amount="1" ${btnStyle}>+1</button>
+            <button class="small danger" data-save="${c.id}" data-save-type="failure" data-save-amount="2" ${btnStyle}>+2</button>
           </div>
         </div>
       `;
@@ -440,6 +466,7 @@ export function renderEncounter() {
         <label><input type="checkbox" data-res="action" data-id="${c.id}" ${c.action ? 'checked' : ''}> Действие</label>
         <label><input type="checkbox" data-res="bonus" data-id="${c.id}" ${c.bonus ? 'checked' : ''}> Бонусное</label>
         <label><input type="checkbox" data-res="reaction" data-id="${c.id}" ${c.reaction ? 'checked' : ''}> Реакция</label>
+        <label class="concentration-label"><input type="checkbox" data-res="concentration" data-id="${c.id}" ${c.concentration ? 'checked' : ''}> Концентрация</label>
       </div>
       <div class="enc-conditions">
         <select class="enc-condition-select" data-cond="${c.id}">
@@ -456,8 +483,8 @@ export function renderEncounter() {
       ` : ''}
       ${deathSavesHtml}
       <div class="enc-actions">
-        <button class="small danger" data-damage="${c.id}">Урон</button>
-        <button class="small success-btn" data-heal="${c.id}">Исцеление</button>
+        ${!incap ? `<button class="small danger" data-damage="${c.id}">Урон</button>
+                    <button class="small success-btn" data-heal="${c.id}">Исцеление</button>` : ''}
         ${(unconscious || stable) && !c.isEnemy ? `<button class="small warn" data-stabilize="${c.id}">Стабилизирован</button>` : ''}
         <button class="small secondary" data-remove="${c.id}" style="margin-left: auto;">Удалить из боя</button>
       </div>
@@ -537,6 +564,10 @@ export function renderEncounter() {
       if (!c) return;
       const key = el.dataset.res;
       c[key] = el.checked;
+      if (key === 'concentration') {
+        persist();
+        return;
+      }
       if (!c.usedRound) c.usedRound = { action: 0, bonus: 0, reaction: 0 };
       c.usedRound[key] = el.checked ? enc.round : 0;
       persist();
@@ -567,27 +598,22 @@ export function renderEncounter() {
     });
   });
 
-  // Спасброски: клик по блоку = +1
-  container.querySelectorAll('[data-save-block]').forEach(el => {
+  // Спасброски: кнопки +1 / +2
+  container.querySelectorAll('[data-save]').forEach(el => {
     el.addEventListener('click', (e) => {
       e.stopPropagation();
-      const c = enc.combatants.find(x => x.id === el.dataset.id);
+      const c = enc.combatants.find(x => x.id === el.dataset.save);
       if (!c) return;
       ensureDeathSaves(c);
-      const type = el.dataset.saveBlock; // success | failure
-      // Проверка: не больше 2 за раунд
-      if (c.lastSaveRound === enc.round) {
-        return;
-      }
+      if (c.lastSaveRound === enc.round) return;
+      const amount = parseInt(el.dataset.saveAmount, 10) || 1;
+      const type = el.dataset.saveType;
       if (type === 'success') {
-        if (c.deathSaves.successes >= 2) return;
-        c.deathSaves.successes += 1;
+        c.deathSaves.successes = Math.min(3, c.deathSaves.successes + amount);
       } else {
-        if (c.deathSaves.failures >= 2) return;
-        c.deathSaves.failures += 1;
+        c.deathSaves.failures = Math.min(3, c.deathSaves.failures + amount);
       }
       c.lastSaveRound = enc.round;
-      // Проверка на стабилизацию / смерть
       if (c.deathSaves.successes >= 3) c.status = 'stable';
       if (c.deathSaves.failures >= 3) c.status = 'dead';
       persist();
@@ -595,7 +621,6 @@ export function renderEncounter() {
     });
   });
 
-  // Стабилизация
   container.querySelectorAll('[data-stabilize]').forEach(el => {
     el.addEventListener('click', (e) => {
       e.stopPropagation();
@@ -733,6 +758,7 @@ export function confirmAddPlayers() {
         action: false,
         bonus: false,
         reaction: false,
+        concentration: false,
         status: 'alive',
         conditions: [],
         expanded: false,
@@ -798,6 +824,7 @@ export function confirmAddEnemy() {
       action: false,
       bonus: false,
       reaction: false,
+      concentration: false,
       status: 'alive',
       conditions: [],
       expanded: false,
