@@ -29,21 +29,15 @@ const SKIP_TURN_CONDITIONS = [
    ВСПОМОГАТЕЛЬНЫЕ
    ============================================================ */
 
-function isDead(c) {
-  return c.status === 'dead';
-}
-
-function isUnconscious(c) {
-  return c.status === 'unconscious';
-}
-
-function isStable(c) {
-  return c.status === 'stable';
-}
+function isDead(c) { return c.status === 'dead'; }
+function isUnconscious(c) { return c.status === 'unconscious'; }
+function isStable(c) { return c.status === 'stable'; }
 
 function mustSkipTurn(c) {
   if (isDead(c)) return true;
-  if (isUnconscious(c)) return true;
+  // Бессознательные и стабилизированные НЕ пропускаются —
+  // их ход нужен для спасбросков (или просто чтобы Мастер видел)
+  if (isUnconscious(c)) return false;
   if (isStable(c)) return true;
   return c.conditions && c.conditions.some(cond => SKIP_TURN_CONDITIONS.includes(cond));
 }
@@ -78,13 +72,190 @@ function getLogEntry(id) {
 }
 
 function ensureDeathSaves(c) {
-  if (!c.deathSaves) {
-    c.deathSaves = { successes: 0, failures: 0 };
-  }
+  if (!c.deathSaves) c.deathSaves = { successes: 0, failures: 0 };
 }
 
 /* ============================================================
-   МОДАЛКА УРОНА / ИСЦЕЛЕНИЯ
+   МИНИ-ДИАЛОГ: HP / THP
+   ============================================================ */
+
+function showHpDialog(combatant, onDone) {
+  const overlay = document.createElement('div');
+  overlay.className = 'dialog-overlay';
+  overlay.innerHTML = `
+    <div class="dialog">
+      <p>${escapeHtml(combatant.name)}<br>
+        HP: ${combatant.hp}/${combatant.maxHp}${combatant.tempHp ? ` <span style="color:var(--accent);">THP: ${combatant.tempHp}</span>` : ''}
+      </p>
+      <input type="number" id="hp-dialog-input" min="0" placeholder="Значение" style="margin-bottom: 12px;">
+      <div class="field" style="margin-bottom: 16px; flex-direction: row; align-items: center; gap: 8px;">
+        <input type="checkbox" id="hp-dialog-temp" style="width:auto;">
+        <label for="hp-dialog-temp" style="text-transform:none; font-size:0.9rem; color:var(--text);">Это временные HP (THP)</label>
+      </div>
+      <div class="dialog-actions">
+        <button class="secondary" data-cancel>Отмена</button>
+        <button class="danger" data-damage>Урон</button>
+        <button class="success-btn" data-heal>Исцеление</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(overlay);
+  const input = overlay.querySelector('#hp-dialog-input');
+  const tempCheck = overlay.querySelector('#hp-dialog-temp');
+  input.focus();
+  const close = () => overlay.remove();
+
+  overlay.querySelector('[data-cancel]').addEventListener('click', close);
+  overlay.addEventListener('click', e => { if (e.target === overlay) close(); });
+
+  overlay.querySelector('[data-damage]').addEventListener('click', () => {
+    const val = parseInt(input.value, 10);
+    if (isNaN(val) || val <= 0) return;
+    if (tempCheck.checked) {
+      // Установить THP
+      combatant.tempHp = val;
+    } else {
+      applyDamage(combatant, val, null);
+    }
+    persist();
+    close();
+    onDone();
+  });
+
+  overlay.querySelector('[data-heal]').addEventListener('click', () => {
+    const val = parseInt(input.value, 10);
+    if (isNaN(val) || val <= 0) return;
+    if (tempCheck.checked) {
+      combatant.tempHp = val;
+    } else {
+      applyHeal(combatant, val, null);
+    }
+    persist();
+    close();
+    onDone();
+  });
+}
+
+/* ============================================================
+   МИНИ-ДИАЛОГ: КД
+   ============================================================ */
+
+function showAcDialog(combatant, onDone) {
+  const overlay = document.createElement('div');
+  overlay.className = 'dialog-overlay';
+  overlay.innerHTML = `
+    <div class="dialog">
+      <p>${escapeHtml(combatant.name)} — КД: <b>${combatant.ac}</b></p>
+      <div style="display: flex; gap: 8px; justify-content: center; margin-bottom: 16px; flex-wrap: wrap;">
+        <button class="danger" data-ac="-2">−2 КД</button>
+        <button class="danger" data-ac="-1">−1 КД</button>
+        <button class="success-btn" data-ac="+1">+1 КД</button>
+        <button class="success-btn" data-ac="+2">+2 КД</button>
+      </div>
+      <div class="dialog-actions">
+        <button class="secondary" data-cancel>Закрыть</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(overlay);
+  const close = () => overlay.remove();
+
+  overlay.querySelector('[data-cancel]').addEventListener('click', close);
+  overlay.addEventListener('click', e => { if (e.target === overlay) close(); });
+
+  overlay.querySelectorAll('[data-ac]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const delta = parseInt(btn.dataset.ac, 10);
+      combatant.ac += delta;
+      persist();
+      close();
+      onDone();
+    });
+  });
+}
+
+/* ============================================================
+   ЛОГИКА УРОНА / ИСЦЕЛЕНИЯ
+   ============================================================ */
+
+function applyDamage(target, val, sourceLog) {
+  let dmg = val;
+  // Сначала THP
+  if (target.tempHp > 0) {
+    const absorbed = Math.min(target.tempHp, dmg);
+    target.tempHp -= absorbed;
+    dmg -= absorbed;
+  }
+
+  // Применяем к HP
+  const newHp = target.hp - dmg;
+
+  if (newHp <= 0) {
+    target.hp = 0;
+
+    if (target.isEnemy) {
+      // Враги умирают сразу
+      if (target.status !== 'dead') {
+        target.status = 'dead';
+        if (sourceLog) sourceLog.kills += 1;
+      }
+    } else {
+      // Игрок: проверяем на мгновенную смерть
+      // Урон, прошедший после THP = dmg
+      // Условие мгновенной смерти: dmg >= текущий_HP + максимальный_HP
+      // Но HP уже 0, поэтому используем исходный HP
+      const originalHp = target.hp + dmg; // = исходный HP
+      const massiveDamage = dmg >= originalHp + target.maxHp;
+
+      if (massiveDamage) {
+        // Мгновенная смерть
+        target.status = 'dead';
+        if (sourceLog) sourceLog.kills += 1;
+      } else if (target.status === 'unconscious' || target.status === 'stable') {
+        // Уже без сознания — +2 провала
+        ensureDeathSaves(target);
+        target.deathSaves.failures = Math.min(3, target.deathSaves.failures + 2);
+        if (target.deathSaves.failures >= 3) {
+          target.status = 'dead';
+          if (sourceLog) sourceLog.kills += 1;
+        }
+      } else {
+        // Только что упал без сознания
+        target.status = 'unconscious';
+        ensureDeathSaves(target);
+      }
+    }
+  } else {
+    target.hp = newHp;
+  }
+
+  if (sourceLog) sourceLog.damage += val;
+}
+
+function applyHeal(target, val, sourceLog) {
+  const wasUnconscious = isUnconscious(target) || isStable(target);
+  const before = target.hp;
+  target.hp = Math.min(target.maxHp, target.hp + val);
+  const healed = target.hp - before;
+
+  if (target.hp > 0) {
+    if (wasUnconscious) {
+      target.status = 'alive';
+      target.deathSaves = { successes: 0, failures: 0 };
+      if (!Array.isArray(target.conditions)) target.conditions = [];
+      if (!target.conditions.includes('Опрокинутый')) {
+        target.conditions.push('Опрокинутый');
+      }
+    } else if (target.status === 'dead' && !target.isEnemy) {
+      target.status = 'alive';
+    }
+  }
+
+  if (sourceLog) sourceLog.heal += healed;
+}
+
+/* ============================================================
+   МОДАЛКА УРОНА / ИСЦЕЛЕНИЯ (массовая)
    ============================================================ */
 
 let damageMode = 'damage';
@@ -113,7 +284,7 @@ function openDamageModal(sourceId, mode) {
       <label class="add-player-row ${dead ? 'already' : ''}">
         <input type="checkbox" data-damage-target="${c.id}" ${dead ? 'disabled' : ''}>
         <span>${escapeHtml(c.name)}</span>
-        <span class="hint">${c.hp}/${c.maxHp}${c.tempHp ? ` (+${c.tempHp})` : ''}${isUnconscious(c) ? ' — без сознания' : ''}${isStable(c) ? ' — стабилизирован' : ''}</span>
+        <span class="hint">${c.hp}/${c.maxHp}${c.tempHp ? ` (+${c.tempHp} THP)` : ''}${isUnconscious(c) ? ' — без сознания' : ''}${isStable(c) ? ' — стабилизирован' : ''}</span>
         ${dead ? '<span class="hint">(мертв)</span>' : ''}
       </label>
     `;
@@ -146,58 +317,9 @@ function confirmDamage() {
     if (!target) return;
 
     if (damageMode === 'damage') {
-      let dmg = val;
-      if (target.tempHp > 0) {
-        const absorbed = Math.min(target.tempHp, dmg);
-        target.tempHp -= absorbed;
-        dmg -= absorbed;
-      }
-      if (dmg > 0) target.hp -= dmg;
-
-      if (target.hp <= 0) {
-        target.hp = 0;
-        if (target.isEnemy) {
-          // Враги умирают
-          if (target.status !== 'dead') {
-            target.status = 'dead';
-            if (sourceLog) sourceLog.kills += 1;
-          }
-        } else {
-          // Игроки падают без сознания
-          if (target.status === 'unconscious' || target.status === 'stable') {
-            // Уже без сознания — +2 провала спасброска
-            ensureDeathSaves(target);
-            target.deathSaves.failures = Math.min(3, target.deathSaves.failures + 2);
-            if (target.deathSaves.failures >= 3) target.status = 'dead';
-          } else {
-            target.status = 'unconscious';
-            ensureDeathSaves(target);
-          }
-        }
-      }
-
-      if (sourceLog) sourceLog.damage += val;
+      applyDamage(target, val, sourceLog);
     } else {
-      // Исцеление
-      const wasUnconscious = isUnconscious(target) || isStable(target);
-      const before = target.hp;
-      target.hp = Math.min(target.maxHp, target.hp + val);
-      const healed = target.hp - before;
-
-      if (target.hp > 0) {
-        if (target.status === 'dead' && !target.isEnemy) {
-          // Воскрешение игрока (маловероятно, но)
-          target.status = 'alive';
-        } else if (wasUnconscious) {
-          target.status = 'alive';
-          target.deathSaves = { successes: 0, failures: 0 };
-          if (!Array.isArray(target.conditions)) target.conditions = [];
-          if (!target.conditions.includes('Опрокинутый')) {
-            target.conditions.push('Опрокинутый');
-          }
-        }
-      }
-      if (sourceLog) sourceLog.heal += healed;
+      applyHeal(target, val, sourceLog);
     }
     applied++;
   });
@@ -280,22 +402,21 @@ export function renderEncounter() {
       });
     }
 
-    // Спасброски от смерти (для бессознательных/стабилизированных игроков)
+    // Спасброски (только для бессознательных, НЕ для стабилизированных)
     let deathSavesHtml = '';
-    if ((unconscious || stable) && !c.isEnemy) {
+    if (unconscious && !c.isEnemy) {
       ensureDeathSaves(c);
-      const showRoll = unconscious && isActive;
       deathSavesHtml = `
         <div class="death-saves">
-          <div class="death-save-col">
+          <div class="death-save-row">
             <span class="death-save-label success-label">Успехи</span>
             <div class="death-save-cells">
               ${[0,1,2].map(i => `
-                <input type="checkbox" class="death-checkbox success" data-ds="success" data-idx="${i}" data-id="${c.id}" ${i < c.deathSaves.successes ? 'checked' : ''}>
+                <input type="checkbox" class="death-checkbox" data-ds="success" data-idx="${i}" data-id="${c.id}" ${i < c.deathSaves.successes ? 'checked' : ''}>
               `).join('')}
             </div>
           </div>
-          <div class="death-save-col">
+          <div class="death-save-row">
             <span class="death-save-label failure-label">Провалы</span>
             <div class="death-save-cells">
               ${[0,1,2].map(i => `
@@ -303,7 +424,6 @@ export function renderEncounter() {
               `).join('')}
             </div>
           </div>
-          ${showRoll ? '<div class="death-save-hint">Бросок d20: отметьте успех или провал</div>' : ''}
         </div>
       `;
     }
@@ -336,6 +456,8 @@ export function renderEncounter() {
       </div>
     ` : '';
 
+    const thpHtml = c.tempHp > 0 ? `; <span style="color: var(--accent);">THP: ${c.tempHp}</span>` : '';
+
     const row = document.createElement('div');
     row.className = rowClass;
 
@@ -347,8 +469,8 @@ export function renderEncounter() {
         <div class="enc-head" data-toggle="${c.id}" style="cursor: pointer;">
           <span class="enc-name">${escapeHtml(c.name)}</span>
           <span class="enc-stats">
-            <b class="${hpClass}">HP: ${c.hp}${c.tempHp > 0 ? ` <span style="color: var(--warning);">(+${c.tempHp})</span>` : ''} / ${c.maxHp}</b>
-            <b>КД: ${c.ac}</b>
+            <b class="enc-hp-clickable ${hpClass}" data-hp-click="${c.id}">HP: ${c.hp}/${c.maxHp}${thpHtml}</b>
+            <b class="enc-ac-clickable" data-ac-click="${c.id}">КД: ${c.ac}</b>
             ${lowHp ? '<span class="enc-bloodied">Окровавлен</span>' : ''}
           </span>
           <span class="enc-arrow">${expanded ? '▲' : '▼'}</span>
@@ -373,6 +495,24 @@ export function renderEncounter() {
     });
   });
 
+  container.querySelectorAll('[data-hp-click]').forEach(el => {
+    el.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const c = enc.combatants.find(x => x.id === el.dataset.hpClick);
+      if (!c) return;
+      showHpDialog(c, renderEncounter);
+    });
+  });
+
+  container.querySelectorAll('[data-ac-click]').forEach(el => {
+    el.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const c = enc.combatants.find(x => x.id === el.dataset.acClick);
+      if (!c) return;
+      showAcDialog(c, renderEncounter);
+    });
+  });
+
   container.querySelectorAll('[data-init]').forEach(el => {
     el.addEventListener('change', () => {
       const c = enc.combatants.find(x => x.id === el.dataset.init);
@@ -390,13 +530,8 @@ export function renderEncounter() {
       if (!c) return;
       const key = el.dataset.res;
       c[key] = el.checked;
-      if (el.checked) {
-        if (!c.usedRound) c.usedRound = { action: 0, bonus: 0, reaction: 0 };
-        c.usedRound[key] = enc.round;
-      } else {
-        if (!c.usedRound) c.usedRound = { action: 0, bonus: 0, reaction: 0 };
-        c.usedRound[key] = 0;
-      }
+      if (!c.usedRound) c.usedRound = { action: 0, bonus: 0, reaction: 0 };
+      c.usedRound[key] = el.checked ? enc.round : 0;
       persist();
     });
   });
@@ -425,7 +560,7 @@ export function renderEncounter() {
     });
   });
 
-  // Спасброски от смерти
+  // Спасброски
   container.querySelectorAll('[data-ds]').forEach(el => {
     el.addEventListener('change', (e) => {
       e.stopPropagation();
@@ -433,27 +568,14 @@ export function renderEncounter() {
       if (!c) return;
       ensureDeathSaves(c);
       const idx = parseInt(el.dataset.idx, 10);
-      if (el.dataset.ds === 'success') {
-        if (el.checked) {
-          c.deathSaves.successes = Math.max(c.deathSaves.successes, idx + 1);
-        } else {
-          c.deathSaves.successes = Math.min(c.deathSaves.successes, idx);
-        }
+      const key = el.dataset.ds === 'success' ? 'successes' : 'failures';
+      if (el.checked) {
+        c.deathSaves[key] = Math.max(c.deathSaves[key], idx + 1);
       } else {
-        if (el.checked) {
-          c.deathSaves.failures = Math.max(c.deathSaves.failures, idx + 1);
-        } else {
-          c.deathSaves.failures = Math.min(c.deathSaves.failures, idx);
-        }
+        c.deathSaves[key] = Math.min(c.deathSaves[key], idx);
       }
-      // 3 успеха — стабилизирован
-      if (c.deathSaves.successes >= 3) {
-        c.status = 'stable';
-      }
-      // 3 провала — мертв
-      if (c.deathSaves.failures >= 3) {
-        c.status = 'dead';
-      }
+      if (c.deathSaves.successes >= 3) c.status = 'stable';
+      if (c.deathSaves.failures >= 3) c.status = 'dead';
       persist();
       renderEncounter();
     });
@@ -466,6 +588,7 @@ export function renderEncounter() {
       const c = enc.combatants.find(x => x.id === el.dataset.stabilize);
       if (!c) return;
       c.status = 'stable';
+      c.deathSaves = { successes: 0, failures: 0 };
       persist();
       renderEncounter();
     });
@@ -695,7 +818,6 @@ function openLogsModal() {
   const enc = state.encounter;
   ensureLogs();
 
-  // Только игроки
   const players = enc.combatants.filter(c => !c.isEnemy);
   const rows = players.map(c => {
     const log = getLogEntry(c.id);
