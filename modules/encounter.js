@@ -20,11 +20,14 @@ const CONDITIONS = [
   'Ошеломлённый', 'Парализованный', 'Схваченный'
 ];
 
-// Состояния, при которых существо не может действовать
 const INCAPACITATED_CONDITIONS = [
   'Бессознательный', 'Недееспособный', 'Окаменевший',
   'Ошеломлённый', 'Парализованный'
 ];
+
+/* ============================================================
+   ВСПОМОГАТЕЛЬНЫЕ
+   ============================================================ */
 
 function isIncapacitated(c) {
   if (isDead(c)) return true;
@@ -162,7 +165,7 @@ function showAcDialog(combatant, onDone) {
 
   const close = () => {
     overlay.remove();
-    onDone(); // обновляем карточку сразу
+    onDone();
   };
 
   overlay.querySelector('[data-cancel]').addEventListener('click', close);
@@ -171,15 +174,10 @@ function showAcDialog(combatant, onDone) {
   overlay.querySelectorAll('[data-ac]').forEach(btn => {
     btn.addEventListener('click', () => {
       const val = btn.dataset.ac;
-      if (val === '+2-shield') {
-        combatant.ac += 2;
-      } else {
-        const delta = parseInt(val, 10);
-        combatant.ac += delta;
-      }
+      if (val === '+2-shield') combatant.ac += 2;
+      else combatant.ac += parseInt(val, 10);
       acDisplay.textContent = combatant.ac;
       persist();
-      // Меню не закрываем — ждём "Закрыть"
     });
   });
 }
@@ -231,14 +229,9 @@ function applyDamage(target, val, sourceLog) {
     target.hp = newHp;
   }
 
-  // При недееспособности концентрация пропадает
-  if (isIncapacitated(target)) {
-    target.concentration = false;
-  }
-
+  if (isIncapacitated(target)) target.concentration = false;
   if (sourceLog) sourceLog.damage += val;
 
-  // Проверка концентрации
   if (target.concentration && val > 0) {
     const dc = Math.max(10, Math.floor(val / 2));
     setTimeout(() => {
@@ -248,9 +241,7 @@ function applyDamage(target, val, sourceLog) {
         <div class="dialog">
           <p><b>${escapeHtml(target.name)}</b> поддерживает концентрацию.</p>
           <p style="color: var(--warning); font-weight: 600;">Требуется проверка Телосложения СЛ ${dc}</p>
-          <div class="dialog-actions">
-            <button data-ok>Понятно</button>
-          </div>
+          <div class="dialog-actions"><button data-ok>Понятно</button></div>
         </div>
       `;
       document.body.appendChild(dlg);
@@ -355,11 +346,8 @@ function confirmDamage() {
     const target = enc.combatants.find(c => c.id === el.dataset.damageTarget);
     if (!target) return;
 
-    if (damageMode === 'damage') {
-      applyDamage(target, val, sourceLog);
-    } else {
-      applyHeal(target, val, sourceLog);
-    }
+    if (damageMode === 'damage') applyDamage(target, val, sourceLog);
+    else applyHeal(target, val, sourceLog);
     applied++;
   });
 
@@ -387,7 +375,6 @@ export function renderEncounter() {
   const enc = state.encounter;
   enc.combatants.forEach(c => {
     resetOldResources(c, enc.round);
-    // Сбрасываем концентрацию, если существо недееспособно
     if (isIncapacitated(c)) c.concentration = false;
   });
 
@@ -446,7 +433,6 @@ export function renderEncounter() {
       });
     }
 
-    // Спасброски
     let deathSavesHtml = '';
     if (unconscious && !c.isEnemy) {
       ensureDeathSaves(c);
@@ -456,18 +442,14 @@ export function renderEncounter() {
         <div class="death-saves">
           <div class="death-save-row">
             <span class="death-save-label success-label">Успехи</span>
-            <div class="death-save-cells" data-id="${c.id}">
-              ${[0,1,2].map(i => `<span class="death-cell ${i < c.deathSaves.successes ? 'filled success' : ''}"></span>`).join('')}
-            </div>
+            <div class="death-save-cells">${[0,1,2].map(i => `<span class="death-cell ${i < c.deathSaves.successes ? 'filled success' : ''}"></span>`).join('')}</div>
             <button class="small success-btn" data-save="${c.id}" data-save-type="success" data-save-amount="1" ${btnStyle}>+1</button>
             <button class="small success-btn" data-save="${c.id}" data-save-type="success" data-save-amount="2" ${btnStyle}>+2</button>
             ${!canAdd ? '<span class="death-save-hint" style="color:var(--text-dim);">уже бросали</span>' : ''}
           </div>
           <div class="death-save-row">
             <span class="death-save-label failure-label">Провалы</span>
-            <div class="death-save-cells" data-id="${c.id}">
-              ${[0,1,2].map(i => `<span class="death-cell ${i < c.deathSaves.failures ? 'filled failure' : ''}"></span>`).join('')}
-            </div>
+            <div class="death-save-cells">${[0,1,2].map(i => `<span class="death-cell ${i < c.deathSaves.failures ? 'filled failure' : ''}"></span>`).join('')}</div>
             <button class="small danger" data-save="${c.id}" data-save-type="failure" data-save-amount="1" ${btnStyle}>+1</button>
             <button class="small danger" data-save="${c.id}" data-save-type="failure" data-save-amount="2" ${btnStyle}>+2</button>
           </div>
@@ -475,7 +457,6 @@ export function renderEncounter() {
       `;
     }
 
-    // Галочка концентрации показывается только если не недееспособен
     const concentrationLabel = (!incap)
       ? `<label class="concentration-label"><input type="checkbox" data-res="concentration" data-id="${c.id}" ${c.concentration ? 'checked' : ''}> Концентрация</label>`
       : '';
@@ -510,10 +491,9 @@ export function renderEncounter() {
     ` : '';
 
     const thpHtml = c.tempHp > 0 ? `; <span style="color: var(--accent);">THP: ${c.tempHp}</span>` : '';
-
-    // Бейдж концентрации рядом со стрелкой
-    const concentrationBadge = c.concentration
-      ? `<span class="enc-concentration-badge" title="Концентрация">Концентрация</span>`
+    const concentrationBadge = c.concentration ? `<span class="enc-concentration-badge" title="Концентрация">Концентрация</span>` : '';
+    const passiveHtml = c.passivePerception
+      ? `<span class="enc-passive" title="Пассивное восприятие">👁 ${c.passivePerception}</span>`
       : '';
 
     const row = document.createElement('div');
@@ -529,6 +509,7 @@ export function renderEncounter() {
           <span class="enc-stats">
             <b class="enc-hp-clickable ${hpClass}" data-hp-click="${c.id}">HP: ${c.hp}/${c.maxHp}${thpHtml}</b>
             <b class="enc-ac-clickable" data-ac-click="${c.id}">КД: ${c.ac}</b>
+            ${passiveHtml}
             ${lowHp ? '<span class="enc-bloodied">Окровавлен</span>' : ''}
           </span>
           ${concentrationBadge}
@@ -588,7 +569,6 @@ export function renderEncounter() {
       const c = enc.combatants.find(x => x.id === el.dataset.id);
       if (!c) return;
       const key = el.dataset.res;
-      // Если ставим концентрацию, а существо недееспособно — не даём
       if (key === 'concentration' && isIncapacitated(c)) {
         el.checked = false;
         return;
@@ -638,11 +618,8 @@ export function renderEncounter() {
       if (c.lastSaveRound === enc.round) return;
       const amount = parseInt(el.dataset.saveAmount, 10) || 1;
       const type = el.dataset.saveType;
-      if (type === 'success') {
-        c.deathSaves.successes = Math.min(3, c.deathSaves.successes + amount);
-      } else {
-        c.deathSaves.failures = Math.min(3, c.deathSaves.failures + amount);
-      }
+      if (type === 'success') c.deathSaves.successes = Math.min(3, c.deathSaves.successes + amount);
+      else c.deathSaves.failures = Math.min(3, c.deathSaves.failures + amount);
       c.lastSaveRound = enc.round;
       if (c.deathSaves.successes >= 3) c.status = 'stable';
       if (c.deathSaves.failures >= 3) c.status = 'dead';
@@ -761,6 +738,7 @@ export function openAddPlayersModal() {
         <label class="add-player-row ${alreadyIn ? 'already' : ''}">
           <input type="checkbox" data-add-player="${p.id}" ${alreadyIn ? 'disabled' : ''}>
           <span>${escapeHtml(p.name)}</span>
+          <span class="hint">HP ${p.hp || 10}/${p.maxHp || 10}, КД ${p.ac || 10}</span>
           ${alreadyIn ? '<span class="hint">(уже в бою)</span>' : ''}
         </label>
       `;
@@ -785,10 +763,11 @@ export function confirmAddPlayers() {
         name: player.name,
         isEnemy: false,
         initiative: 0,
-        hp: 10,
-        maxHp: 10,
+        hp: player.hp || 10,
+        maxHp: player.maxHp || 10,
         tempHp: 0,
-        ac: 10,
+        ac: player.ac || 10,
+        passivePerception: player.passivePerception || 10,
         action: false,
         bonus: false,
         reaction: false,
@@ -877,9 +856,8 @@ export function confirmAddEnemy() {
 
 export function finishEncounter() {
   const enc = state.encounter;
-  if (enc.finished) {
-    openLogsModal();
-  } else {
+  if (enc.finished) openLogsModal();
+  else {
     enc.finished = true;
     persist();
     renderEncounter();
@@ -908,9 +886,7 @@ function openLogsModal() {
 
   content.innerHTML = players.length ? `
     <table class="logs-table">
-      <thead>
-        <tr><th>Игрок</th><th>Нанесено урона</th><th>Исцелено</th><th>Убийств</th></tr>
-      </thead>
+      <thead><tr><th>Игрок</th><th>Нанесено урона</th><th>Исцелено</th><th>Убийств</th></tr></thead>
       <tbody>${rows}</tbody>
     </table>
   ` : '<div class="empty">Нет игроков в бою</div>';
@@ -922,12 +898,8 @@ export async function resetEncounter() {
   const ok = await showConfirm('Сбросить бой полностью? История, список участников и логи будут очищены.', 'Сбросить', 'Отмена');
   if (!ok) return;
   state.encounter = {
-    active: false,
-    round: 1,
-    turnIndex: 0,
-    combatants: [],
-    finished: false,
-    logs: {}
+    active: false, round: 1, turnIndex: 0,
+    combatants: [], finished: false, logs: {}
   };
   persist();
   $('modal-logs').style.display = 'none';
