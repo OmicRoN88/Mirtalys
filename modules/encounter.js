@@ -29,6 +29,7 @@ const INCAPACITATED_CONDITIONS = [
 function isIncapacitated(c) {
   if (isDead(c)) return true;
   if (isUnconscious(c)) return true;
+  if (isStable(c)) return true;
   return c.conditions && c.conditions.some(cond => INCAPACITATED_CONDITIONS.includes(cond));
 }
 
@@ -158,7 +159,11 @@ function showAcDialog(combatant, onDone) {
   `;
   document.body.appendChild(overlay);
   const acDisplay = overlay.querySelector('#ac-display');
-  const close = () => overlay.remove();
+
+  const close = () => {
+    overlay.remove();
+    onDone(); // обновляем карточку сразу
+  };
 
   overlay.querySelector('[data-cancel]').addEventListener('click', close);
   overlay.addEventListener('click', e => { if (e.target === overlay) close(); });
@@ -174,7 +179,7 @@ function showAcDialog(combatant, onDone) {
       }
       acDisplay.textContent = combatant.ac;
       persist();
-      // Не закрываем меню — ждём "Закрыть"
+      // Меню не закрываем — ждём "Закрыть"
     });
   });
 }
@@ -224,6 +229,11 @@ function applyDamage(target, val, sourceLog) {
     }
   } else {
     target.hp = newHp;
+  }
+
+  // При недееспособности концентрация пропадает
+  if (isIncapacitated(target)) {
+    target.concentration = false;
   }
 
   if (sourceLog) sourceLog.damage += val;
@@ -375,7 +385,11 @@ export function renderEncounter() {
   if (!container) return;
 
   const enc = state.encounter;
-  enc.combatants.forEach(c => resetOldResources(c, enc.round));
+  enc.combatants.forEach(c => {
+    resetOldResources(c, enc.round);
+    // Сбрасываем концентрацию, если существо недееспособно
+    if (isIncapacitated(c)) c.concentration = false;
+  });
 
   if (nextBtn) {
     if (enc.active) {
@@ -432,7 +446,7 @@ export function renderEncounter() {
       });
     }
 
-    // Спасброски (только для бессознательных)
+    // Спасброски
     let deathSavesHtml = '';
     if (unconscious && !c.isEnemy) {
       ensureDeathSaves(c);
@@ -461,12 +475,17 @@ export function renderEncounter() {
       `;
     }
 
+    // Галочка концентрации показывается только если не недееспособен
+    const concentrationLabel = (!incap)
+      ? `<label class="concentration-label"><input type="checkbox" data-res="concentration" data-id="${c.id}" ${c.concentration ? 'checked' : ''}> Концентрация</label>`
+      : '';
+
     const expandedPart = expanded ? `
       <div class="enc-resources">
         <label><input type="checkbox" data-res="action" data-id="${c.id}" ${c.action ? 'checked' : ''}> Действие</label>
         <label><input type="checkbox" data-res="bonus" data-id="${c.id}" ${c.bonus ? 'checked' : ''}> Бонусное</label>
         <label><input type="checkbox" data-res="reaction" data-id="${c.id}" ${c.reaction ? 'checked' : ''}> Реакция</label>
-        <label class="concentration-label"><input type="checkbox" data-res="concentration" data-id="${c.id}" ${c.concentration ? 'checked' : ''}> Концентрация</label>
+        ${concentrationLabel}
       </div>
       <div class="enc-conditions">
         <select class="enc-condition-select" data-cond="${c.id}">
@@ -492,6 +511,11 @@ export function renderEncounter() {
 
     const thpHtml = c.tempHp > 0 ? `; <span style="color: var(--accent);">THP: ${c.tempHp}</span>` : '';
 
+    // Бейдж концентрации рядом со стрелкой
+    const concentrationBadge = c.concentration
+      ? `<span class="enc-concentration-badge" title="Концентрация">Концентрация</span>`
+      : '';
+
     const row = document.createElement('div');
     row.className = rowClass;
 
@@ -507,6 +531,7 @@ export function renderEncounter() {
             <b class="enc-ac-clickable" data-ac-click="${c.id}">КД: ${c.ac}</b>
             ${lowHp ? '<span class="enc-bloodied">Окровавлен</span>' : ''}
           </span>
+          ${concentrationBadge}
           <span class="enc-arrow">${expanded ? '▲' : '▼'}</span>
         </div>
         ${statusBadges ? `<div class="enc-statuses">${statusBadges}</div>` : ''}
@@ -563,9 +588,15 @@ export function renderEncounter() {
       const c = enc.combatants.find(x => x.id === el.dataset.id);
       if (!c) return;
       const key = el.dataset.res;
+      // Если ставим концентрацию, а существо недееспособно — не даём
+      if (key === 'concentration' && isIncapacitated(c)) {
+        el.checked = false;
+        return;
+      }
       c[key] = el.checked;
       if (key === 'concentration') {
         persist();
+        renderEncounter();
         return;
       }
       if (!c.usedRound) c.usedRound = { action: 0, bonus: 0, reaction: 0 };
@@ -598,7 +629,6 @@ export function renderEncounter() {
     });
   });
 
-  // Спасброски: кнопки +1 / +2
   container.querySelectorAll('[data-save]').forEach(el => {
     el.addEventListener('click', (e) => {
       e.stopPropagation();
@@ -629,6 +659,7 @@ export function renderEncounter() {
       c.status = 'stable';
       c.deathSaves = { successes: 0, failures: 0 };
       c.lastSaveRound = 0;
+      c.concentration = false;
       persist();
       renderEncounter();
     });
@@ -702,7 +733,10 @@ export function nextTurn() {
   const current = sorted[enc.turnIndex];
   if (current) current.expanded = true;
 
-  enc.combatants.forEach(c => resetOldResources(c, enc.round));
+  enc.combatants.forEach(c => {
+    resetOldResources(c, enc.round);
+    if (isIncapacitated(c)) c.concentration = false;
+  });
 
   persist();
   renderEncounter();
