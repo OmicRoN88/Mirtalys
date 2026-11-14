@@ -33,8 +33,18 @@ function isDead(c) {
   return c.status === 'dead';
 }
 
+function isUnconscious(c) {
+  return c.status === 'unconscious';
+}
+
+function isStable(c) {
+  return c.status === 'stable';
+}
+
 function mustSkipTurn(c) {
   if (isDead(c)) return true;
+  if (isUnconscious(c)) return true;
+  if (isStable(c)) return true;
   return c.conditions && c.conditions.some(cond => SKIP_TURN_CONDITIONS.includes(cond));
 }
 
@@ -56,9 +66,7 @@ function getHpColorClass(c) {
 }
 
 function ensureLogs() {
-  if (!state.encounter.logs) {
-    state.encounter.logs = {};
-  }
+  if (!state.encounter.logs) state.encounter.logs = {};
 }
 
 function getLogEntry(id) {
@@ -69,11 +77,17 @@ function getLogEntry(id) {
   return state.encounter.logs[id];
 }
 
+function ensureDeathSaves(c) {
+  if (!c.deathSaves) {
+    c.deathSaves = { successes: 0, failures: 0 };
+  }
+}
+
 /* ============================================================
    МОДАЛКА УРОНА / ИСЦЕЛЕНИЯ
    ============================================================ */
 
-let damageMode = 'damage'; // 'damage' | 'heal'
+let damageMode = 'damage';
 let damageSourceId = null;
 
 function openDamageModal(sourceId, mode) {
@@ -93,14 +107,17 @@ function openDamageModal(sourceId, mode) {
   const enc = state.encounter;
   const sorted = [...enc.combatants].sort((a, b) => (b.initiative || 0) - (a.initiative || 0));
 
-  list.innerHTML = sorted.map(c => `
-    <label class="add-player-row ${isDead(c) ? 'already' : ''}">
-      <input type="checkbox" data-damage-target="${c.id}" ${isDead(c) ? 'disabled' : ''}>
-      <span>${escapeHtml(c.name)}</span>
-      <span class="hint">${c.hp}/${c.maxHp}${c.tempHp ? ` (+${c.tempHp})` : ''}</span>
-      ${isDead(c) ? '<span class="hint">(мертв)</span>' : ''}
-    </label>
-  `).join('');
+  list.innerHTML = sorted.map(c => {
+    const dead = isDead(c);
+    return `
+      <label class="add-player-row ${dead ? 'already' : ''}">
+        <input type="checkbox" data-damage-target="${c.id}" ${dead ? 'disabled' : ''}>
+        <span>${escapeHtml(c.name)}</span>
+        <span class="hint">${c.hp}/${c.maxHp}${c.tempHp ? ` (+${c.tempHp})` : ''}${isUnconscious(c) ? ' — без сознания' : ''}${isStable(c) ? ' — стабилизирован' : ''}</span>
+        ${dead ? '<span class="hint">(мертв)</span>' : ''}
+      </label>
+    `;
+  }).join('');
 
   modal.style.display = 'flex';
 }
@@ -136,19 +153,50 @@ function confirmDamage() {
         dmg -= absorbed;
       }
       if (dmg > 0) target.hp -= dmg;
+
       if (target.hp <= 0) {
         target.hp = 0;
-        if (target.status !== 'dead') {
-          target.status = 'dead';
-          if (sourceLog) sourceLog.kills += 1;
+        if (target.isEnemy) {
+          // Враги умирают
+          if (target.status !== 'dead') {
+            target.status = 'dead';
+            if (sourceLog) sourceLog.kills += 1;
+          }
+        } else {
+          // Игроки падают без сознания
+          if (target.status === 'unconscious' || target.status === 'stable') {
+            // Уже без сознания — +2 провала спасброска
+            ensureDeathSaves(target);
+            target.deathSaves.failures = Math.min(3, target.deathSaves.failures + 2);
+            if (target.deathSaves.failures >= 3) target.status = 'dead';
+          } else {
+            target.status = 'unconscious';
+            ensureDeathSaves(target);
+          }
         }
       }
+
       if (sourceLog) sourceLog.damage += val;
     } else {
+      // Исцеление
+      const wasUnconscious = isUnconscious(target) || isStable(target);
       const before = target.hp;
       target.hp = Math.min(target.maxHp, target.hp + val);
       const healed = target.hp - before;
-      if (target.hp > 0 && target.status === 'dead') target.status = 'alive';
+
+      if (target.hp > 0) {
+        if (target.status === 'dead' && !target.isEnemy) {
+          // Воскрешение игрока (маловероятно, но)
+          target.status = 'alive';
+        } else if (wasUnconscious) {
+          target.status = 'alive';
+          target.deathSaves = { successes: 0, failures: 0 };
+          if (!Array.isArray(target.conditions)) target.conditions = [];
+          if (!target.conditions.includes('Опрокинутый')) {
+            target.conditions.push('Опрокинутый');
+          }
+        }
+      }
       if (sourceLog) sourceLog.heal += healed;
     }
     applied++;
@@ -189,13 +237,8 @@ export function renderEncounter() {
   }
 
   if (finishBtn) {
-    if (enc.finished) {
-      finishBtn.textContent = 'Логи';
-      finishBtn.className = 'secondary small';
-    } else {
-      finishBtn.textContent = 'Закончить';
-      finishBtn.className = 'secondary small';
-    }
+    finishBtn.textContent = enc.finished ? 'Логи' : 'Закончить';
+    finishBtn.className = 'secondary small';
   }
 
   if (!enc.combatants.length) {
@@ -215,6 +258,8 @@ export function renderEncounter() {
   sorted.forEach((c) => {
     const isActive = c.id === activeId;
     const dead = isDead(c);
+    const unconscious = isUnconscious(c);
+    const stable = isStable(c);
     const expanded = c.expanded === true;
     const hpClass = getHpColorClass(c);
     const lowHp = c.hp > 0 && c.hp <= c.maxHp * 0.5;
@@ -227,10 +272,40 @@ export function renderEncounter() {
 
     let statusBadges = '';
     if (dead) statusBadges += `<span class="enc-status danger">Мертв</span>`;
+    if (unconscious) statusBadges += `<span class="enc-status danger">Без сознания</span>`;
+    if (stable) statusBadges += `<span class="enc-status warning">Стабилизирован</span>`;
     if (c.conditions) {
       c.conditions.forEach(cond => {
         statusBadges += `<span class="enc-status warning">${escapeHtml(cond)}</span>`;
       });
+    }
+
+    // Спасброски от смерти (для бессознательных/стабилизированных игроков)
+    let deathSavesHtml = '';
+    if ((unconscious || stable) && !c.isEnemy) {
+      ensureDeathSaves(c);
+      const showRoll = unconscious && isActive;
+      deathSavesHtml = `
+        <div class="death-saves">
+          <div class="death-save-col">
+            <span class="death-save-label success-label">Успехи</span>
+            <div class="death-save-cells">
+              ${[0,1,2].map(i => `
+                <input type="checkbox" class="death-checkbox success" data-ds="success" data-idx="${i}" data-id="${c.id}" ${i < c.deathSaves.successes ? 'checked' : ''}>
+              `).join('')}
+            </div>
+          </div>
+          <div class="death-save-col">
+            <span class="death-save-label failure-label">Провалы</span>
+            <div class="death-save-cells">
+              ${[0,1,2].map(i => `
+                <input type="checkbox" class="death-checkbox failure" data-ds="failure" data-idx="${i}" data-id="${c.id}" ${i < c.deathSaves.failures ? 'checked' : ''}>
+              `).join('')}
+            </div>
+          </div>
+          ${showRoll ? '<div class="death-save-hint">Бросок d20: отметьте успех или провал</div>' : ''}
+        </div>
+      `;
     }
 
     const expandedPart = expanded ? `
@@ -252,9 +327,11 @@ export function renderEncounter() {
           `).join('')}
         </div>
       ` : ''}
+      ${deathSavesHtml}
       <div class="enc-actions">
         <button class="small danger" data-damage="${c.id}">Урон</button>
         <button class="small success-btn" data-heal="${c.id}">Исцеление</button>
+        ${(unconscious || stable) && !c.isEnemy ? `<button class="small warn" data-stabilize="${c.id}">Стабилизирован</button>` : ''}
         <button class="small secondary" data-remove="${c.id}" style="margin-left: auto;">Удалить из боя</button>
       </div>
     ` : '';
@@ -343,6 +420,52 @@ export function renderEncounter() {
       if (!c || !Array.isArray(c.conditions)) return;
       const idx = parseInt(el.dataset.condIdx, 10);
       c.conditions.splice(idx, 1);
+      persist();
+      renderEncounter();
+    });
+  });
+
+  // Спасброски от смерти
+  container.querySelectorAll('[data-ds]').forEach(el => {
+    el.addEventListener('change', (e) => {
+      e.stopPropagation();
+      const c = enc.combatants.find(x => x.id === el.dataset.id);
+      if (!c) return;
+      ensureDeathSaves(c);
+      const idx = parseInt(el.dataset.idx, 10);
+      if (el.dataset.ds === 'success') {
+        if (el.checked) {
+          c.deathSaves.successes = Math.max(c.deathSaves.successes, idx + 1);
+        } else {
+          c.deathSaves.successes = Math.min(c.deathSaves.successes, idx);
+        }
+      } else {
+        if (el.checked) {
+          c.deathSaves.failures = Math.max(c.deathSaves.failures, idx + 1);
+        } else {
+          c.deathSaves.failures = Math.min(c.deathSaves.failures, idx);
+        }
+      }
+      // 3 успеха — стабилизирован
+      if (c.deathSaves.successes >= 3) {
+        c.status = 'stable';
+      }
+      // 3 провала — мертв
+      if (c.deathSaves.failures >= 3) {
+        c.status = 'dead';
+      }
+      persist();
+      renderEncounter();
+    });
+  });
+
+  // Стабилизация
+  container.querySelectorAll('[data-stabilize]').forEach(el => {
+    el.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const c = enc.combatants.find(x => x.id === el.dataset.stabilize);
+      if (!c) return;
+      c.status = 'stable';
       persist();
       renderEncounter();
     });
@@ -475,7 +598,8 @@ export function confirmAddPlayers() {
         status: 'alive',
         conditions: [],
         expanded: false,
-        usedRound: { action: 0, bonus: 0, reaction: 0 }
+        usedRound: { action: 0, bonus: 0, reaction: 0 },
+        deathSaves: { successes: 0, failures: 0 }
       });
     }
   });
@@ -548,7 +672,7 @@ export function confirmAddEnemy() {
 }
 
 /* ============================================================
-   ЗАКОНЧИТЬ БОЙ / ЛОГИ / СБРОС
+   ЗАКОНЧИТЬ / ЛОГИ / СБРОС
    ============================================================ */
 
 export function finishEncounter() {
@@ -571,7 +695,9 @@ function openLogsModal() {
   const enc = state.encounter;
   ensureLogs();
 
-  const rows = enc.combatants.map(c => {
+  // Только игроки
+  const players = enc.combatants.filter(c => !c.isEnemy);
+  const rows = players.map(c => {
     const log = getLogEntry(c.id);
     return `<tr>
       <td>${escapeHtml(c.name)}</td>
@@ -581,14 +707,14 @@ function openLogsModal() {
     </tr>`;
   }).join('');
 
-  content.innerHTML = enc.combatants.length ? `
+  content.innerHTML = players.length ? `
     <table class="logs-table">
       <thead>
-        <tr><th>Существо</th><th>Нанесено урона</th><th>Исцелено</th><th>Убийств</th></tr>
+        <tr><th>Игрок</th><th>Нанесено урона</th><th>Исцелено</th><th>Убийств</th></tr>
       </thead>
       <tbody>${rows}</tbody>
     </table>
-  ` : '<div class="empty">Нет участников</div>';
+  ` : '<div class="empty">Нет игроков в бою</div>';
 
   modal.style.display = 'flex';
 }
@@ -640,7 +766,6 @@ export function initEncounterHandlers() {
     $('modal-add-enemy').style.display = 'none';
   });
 
-  // Модалка урона/исцеления
   const btnConfirmDamage = $('btn-confirm-damage');
   if (btnConfirmDamage) btnConfirmDamage.addEventListener('click', confirmDamage);
   const btnCancelDamage = $('btn-cancel-damage');
@@ -648,7 +773,6 @@ export function initEncounterHandlers() {
     $('modal-damage').style.display = 'none';
   });
 
-  // Модалка логов
   const btnResetFromLogs = $('btn-reset-from-logs');
   if (btnResetFromLogs) btnResetFromLogs.addEventListener('click', resetEncounter);
   const btnCloseLogs = $('btn-close-logs');
