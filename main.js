@@ -9,7 +9,7 @@ import {
 } from './modules/date.js';
 
 import {
-  renderMembers, initSostavHandlers
+  renderMembers, initSostavHandlers, collapseAllMembers
 } from './modules/sostav.js';
 
 import {
@@ -65,7 +65,10 @@ async function openModal(name) {
   if (!el) return;
   el.style.display = 'flex';
 
-  if (name === 'members') renderMembers();
+  if (name === 'members') {
+    collapseAllMembers();
+    renderMembers();
+  }
   if (name === 'bank') renderBank();
   if (name === 'date') { fillDateInputs(); updateDateDisplay(); }
   if (name === 'history') renderHistory();
