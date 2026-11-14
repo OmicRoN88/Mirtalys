@@ -906,6 +906,11 @@ button.warn:hover { background: #d08030; }
   margin: 0;
   cursor: pointer;
 }
+.enc-resources .concentration-label {
+  margin-left: auto;
+  color: var(--accent);
+  font-weight: 600;
+}
 
 .enc-conditions {
   display: flex;
@@ -945,7 +950,7 @@ button.warn:hover { background: #d08030; }
   align-items: center;
 }
 
-/* Спасброски от смерти (кликабельные ячейки) */
+/* Спасброски от смерти */
 .death-saves {
   display: flex;
   flex-direction: column;
@@ -959,7 +964,8 @@ button.warn:hover { background: #d08030; }
 .death-save-row {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 8px;
+  flex-wrap: wrap;
 }
 .death-save-label {
   font-size: 0.75rem;
@@ -973,12 +979,8 @@ button.warn:hover { background: #d08030; }
 .death-save-cells {
   display: flex;
   gap: 6px;
-  cursor: pointer;
   padding: 2px;
-  border-radius: 4px;
-  transition: background 0.15s;
 }
-.death-save-cells:hover { background: rgba(124,92,255,0.1); }
 .death-cell {
   display: inline-block;
   width: 20px;
@@ -1000,7 +1002,6 @@ button.warn:hover { background: #d08030; }
   font-size: 0.72rem;
   color: var(--warning);
   font-style: italic;
-  margin-left: auto;
 }
 
 /* ============================================================
