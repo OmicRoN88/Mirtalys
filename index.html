@@ -21,6 +21,7 @@
 <div class="main-menu">
   <button data-modal="date">Дата</button>
   <button data-modal="missions">Миссии</button>
+  <button data-modal="travel">Путешествие</button>
   <button data-modal="bank">Банк</button>
   <button data-modal="warehouse">Склад</button>
   <button data-modal="traders">Торговцы</button>
@@ -35,7 +36,6 @@
   <div class="modal">
     <button class="modal-close" data-close>×</button>
     <h2>Состав гильдии</h2>
-
     <button id="btn-add-npc">Добавить НИП</button>
     <div class="error" id="members-error"></div>
     <div class="member-list" id="members-list"></div>
@@ -125,16 +125,36 @@
   <div class="modal">
     <button class="modal-close" data-close>×</button>
     <h2>Миссии</h2>
-
     <div class="bank-actions" style="margin-bottom: 16px;">
       <button id="btn-create-mission">Сформировать миссию</button>
     </div>
-
     <div class="section-title">Предлагаемые миссии</div>
     <div id="missions-proposed-list"></div>
-
     <div class="section-title">Принятые миссии</div>
     <div id="missions-accepted-list"></div>
+  </div>
+</div>
+
+<!-- ================= МОДАЛЬНОЕ ОКНО: ПУТЕШЕСТВИЕ ================= -->
+<div class="modal-overlay" id="modal-travel" style="display:none;">
+  <div class="modal">
+    <button class="modal-close" data-close>×</button>
+    <h2>Путешествие (Вестмарш)</h2>
+
+    <div class="row">
+      <div class="field">
+        <label for="travel-region">Регион (местность)</label>
+        <select id="travel-region"></select>
+      </div>
+      <div class="field">
+        <label for="travel-tier">Тир (сложность)</label>
+        <select id="travel-tier"></select>
+      </div>
+    </div>
+
+    <button id="btn-trigger-travel" class="warn" style="margin-top: 8px;">Бросок события</button>
+
+    <div id="travel-result" class="bank-expense-info" style="display:none; margin-top: 16px; text-align: left;"></div>
   </div>
 </div>
 
