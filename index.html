@@ -8,7 +8,6 @@
 </head>
 <body>
 
-<!-- ================= ШАПКА ================= -->
 <div class="topbar">
   <div class="guild-title" id="guild-title">Гильдия</div>
   <div class="topbar-right">
@@ -17,7 +16,6 @@
   </div>
 </div>
 
-<!-- ================= ГЛАВНОЕ МЕНЮ ================= -->
 <div class="main-menu">
   <button data-modal="date">Дата</button>
   <button data-modal="missions">Миссии</button>
@@ -50,7 +48,6 @@
   </div>
 </div>
 
-<!-- ================= УРОН / ИСЦЕЛЕНИЕ ================= -->
 <div class="modal-overlay" id="modal-damage" style="display:none;">
   <div class="modal">
     <button class="modal-close" data-close>×</button>
@@ -69,7 +66,6 @@
   </div>
 </div>
 
-<!-- ================= ЛОГИ ================= -->
 <div class="modal-overlay" id="modal-logs" style="display:none;">
   <div class="modal">
     <button class="modal-close" data-close>×</button>
@@ -82,7 +78,6 @@
   </div>
 </div>
 
-<!-- ================= ДОБАВИТЬ ИГРОКОВ ================= -->
 <div class="modal-overlay" id="modal-add-players" style="display:none;">
   <div class="modal">
     <button class="modal-close" data-close>×</button>
@@ -95,7 +90,6 @@
   </div>
 </div>
 
-<!-- ================= ДОБАВИТЬ ВРАГА ================= -->
 <div class="modal-overlay" id="modal-add-enemy" style="display:none;">
   <div class="modal">
     <button class="modal-close" data-close>×</button>
@@ -145,13 +139,86 @@
   </div>
 </div>
 
-<!-- ================= ПЕРСОНАЖ ================= -->
+<!-- ================= КАРТОЧКА ПЕРСОНАЖА (расширенная) ================= -->
+<div class="modal-overlay" id="modal-character-card" style="display:none;">
+  <div class="modal">
+    <button class="modal-close" data-close>×</button>
+    <h2>Карточка персонажа</h2>
+    <input type="hidden" id="cc-id">
+
+    <div class="row">
+      <div class="field" style="grid-column: span 2;">
+        <label for="cc-name">Имя</label>
+        <input type="text" id="cc-name">
+      </div>
+      <div class="field">
+        <label for="cc-species">Вид</label>
+        <input type="text" id="cc-species">
+      </div>
+      <div class="field">
+        <label for="cc-position">Профессия</label>
+        <input type="text" id="cc-position">
+      </div>
+    </div>
+
+    <div class="row">
+      <div class="field">
+        <label for="cc-level">Уровень</label>
+        <select id="cc-level"></select>
+      </div>
+      <div class="field">
+        <label for="cc-class">Класс</label>
+        <select id="cc-class"></select>
+      </div>
+    </div>
+
+    <div class="row">
+      <div class="field">
+        <label for="cc-hp">HP</label>
+        <input type="number" id="cc-hp" min="0" step="1">
+      </div>
+      <div class="field">
+        <label for="cc-maxhp">Макс. HP</label>
+        <input type="number" id="cc-maxhp" min="1" step="1">
+      </div>
+      <div class="field">
+        <label for="cc-ac">КД</label>
+        <input type="number" id="cc-ac" min="0" step="1">
+      </div>
+    </div>
+
+    <div class="row">
+      <div class="field">
+        <label for="cc-passive">Пассивное восприятие</label>
+        <input type="number" id="cc-passive" min="0" step="1">
+      </div>
+      <div class="field">
+        <label for="cc-weight">Вес (фунт.)</label>
+        <input type="number" id="cc-weight" min="0" step="1">
+      </div>
+    </div>
+
+    <div class="field">
+      <label for="cc-info">Краткая информация</label>
+      <textarea id="cc-info"></textarea>
+    </div>
+
+    <div class="actions" style="margin-top: 12px;">
+      <button id="btn-save-character-card" class="success-btn">Сохранить</button>
+      <button id="btn-cancel-character-card" class="secondary">Отмена</button>
+    </div>
+    <div class="error" id="cc-error"></div>
+  </div>
+</div>
+
+<!-- ================= ПЕРСОНАЖ (создание) ================= -->
 <div class="modal-overlay" id="modal-personaj" style="display:none;">
   <div class="modal">
     <button class="modal-close" data-close>×</button>
     <h2>Создать персонажа</h2>
+
     <div class="row">
-      <div class="field">
+      <div class="field" style="grid-column: span 2;">
         <label for="personaj-name">Имя</label>
         <input type="text" id="personaj-name" placeholder="Имя персонажа">
       </div>
@@ -159,12 +226,13 @@
         <label for="personaj-species">Вид</label>
         <input type="text" id="personaj-species" placeholder="Человек, эльф, орк...">
       </div>
-    </div>
-    <div class="row">
       <div class="field">
         <label for="personaj-position">Профессия</label>
         <input type="text" id="personaj-position" placeholder="Кузнец, алхимик...">
       </div>
+    </div>
+
+    <div class="row">
       <div class="field">
         <label for="personaj-level">Уровень</label>
         <select id="personaj-level"></select>
@@ -174,11 +242,39 @@
         <select id="personaj-class"></select>
       </div>
     </div>
+
+    <div class="row">
+      <div class="field">
+        <label for="personaj-hp">HP</label>
+        <input type="number" id="personaj-hp" min="0" step="1" value="10">
+      </div>
+      <div class="field">
+        <label for="personaj-maxhp">Макс. HP</label>
+        <input type="number" id="personaj-maxhp" min="1" step="1" value="10">
+      </div>
+      <div class="field">
+        <label for="personaj-ac">КД</label>
+        <input type="number" id="personaj-ac" min="0" step="1" value="10">
+      </div>
+    </div>
+
+    <div class="row">
+      <div class="field">
+        <label for="personaj-passive">Пассивное восприятие</label>
+        <input type="number" id="personaj-passive" min="0" step="1" value="10">
+      </div>
+      <div class="field">
+        <label for="personaj-weight">Вес (фунт.)</label>
+        <input type="number" id="personaj-weight" min="0" step="1" value="0">
+      </div>
+    </div>
+
     <div class="field">
       <label for="personaj-info">Краткая информация</label>
       <textarea id="personaj-info" placeholder="Возраст, происхождение, особенности..."></textarea>
     </div>
-    <button id="btn-create-personaj" style="margin-top: 8px;">Создать</button>
+
+    <button id="btn-create-personaj" style="margin-top: 8px;">Добавить</button>
     <div class="error" id="personaj-error"></div>
   </div>
 </div>
@@ -316,7 +412,6 @@
   </div>
 </div>
 
-<!-- ================= ИСТОРИЯ ================= -->
 <div class="modal-overlay" id="modal-history" style="display:none;">
   <div class="modal">
     <button class="modal-close" data-close>×</button>
@@ -326,7 +421,6 @@
   </div>
 </div>
 
-<!-- ================= РАСХОДЫ ================= -->
 <div class="modal-overlay" id="modal-expenses" style="display:none;">
   <div class="modal">
     <button class="modal-close" data-close>×</button>
@@ -363,7 +457,6 @@
   </div>
 </div>
 
-<!-- ================= СКЛАД ================= -->
 <div class="modal-overlay" id="modal-warehouse" style="display:none;">
   <div class="modal">
     <button class="modal-close" data-close>×</button>
@@ -405,7 +498,6 @@
   </div>
 </div>
 
-<!-- ================= ТОРГОВЦЫ ================= -->
 <div class="modal-overlay" id="modal-traders" style="display:none;">
   <div class="modal">
     <button class="modal-close" data-close>×</button>
@@ -451,7 +543,6 @@
   </div>
 </div>
 
-<!-- ================= СТОЙЛА ================= -->
 <div class="modal-overlay" id="modal-stoila" style="display:none;">
   <div class="modal">
     <button class="modal-close" data-close>×</button>
@@ -547,7 +638,6 @@
   </div>
 </div>
 
-<!-- ================= БИЗНЕС ================= -->
 <div class="modal-overlay" id="modal-business" style="display:none;">
   <div class="modal">
     <button class="modal-close" data-close>×</button>
@@ -556,7 +646,6 @@
   </div>
 </div>
 
-<!-- ================= ПОДКЛЮЧЕНИЕ СКРИПТА ================= -->
 <script type="module" src="main.js"></script>
 
 </body>
