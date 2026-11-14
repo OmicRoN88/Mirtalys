@@ -69,7 +69,7 @@ body {
   gap: 10px;
   justify-content: center;
   padding: 24px 16px;
-  max-width: 900px;
+  max-width: 1000px;
   margin: 0 auto;
 }
 .main-menu button {
@@ -175,7 +175,6 @@ input[type=number] { -moz-appearance: textfield; }
 input::-webkit-outer-spin-button,
 input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
 
-/* Классы: select + кнопка +/- */
 .class-row {
   display: flex;
   gap: 8px;
@@ -619,6 +618,57 @@ button.warn:hover { background: #d08030; }
 }
 .mission-detail b { color: var(--text); }
 .mission-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+  flex-wrap: wrap;
+}
+
+/* ============================================================
+   СТОЙЛА
+   ============================================================ */
+
+.stoila-card {
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  margin-bottom: 8px;
+  overflow: hidden;
+  border-left: 3px solid var(--success);
+}
+.stoila-card.busy { border-left-color: var(--warning); }
+
+.stoila-name { font-weight: 600; }
+.stoila-category {
+  font-size: 0.75rem;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: rgba(124,92,255,0.15);
+  color: var(--accent);
+  margin-left: 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+.stoila-nickname {
+  font-size: 0.85rem;
+  color: var(--gold);
+  margin-left: 8px;
+  font-style: italic;
+}
+.stoila-sub {
+  display: flex;
+  gap: 14px;
+  font-size: 0.82rem;
+  color: var(--text-dim);
+  margin-top: 4px;
+  flex-wrap: wrap;
+}
+.stoila-status {
+  font-weight: 600;
+}
+.stoila-status.free { color: var(--success); }
+.stoila-status.busy { color: var(--warning); }
+.stoila-actions {
   display: flex;
   gap: 8px;
   margin-top: 12px;
