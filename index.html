@@ -32,12 +32,11 @@
   <button data-modal="personaj">Персонаж</button>
 </div>
 
-<!-- ================= МОДАЛЬНОЕ ОКНО: ЭНКАУНТЕР ================= -->
+<!-- ================= ЭНКАУНТЕР ================= -->
 <div class="modal-overlay" id="modal-encounter" style="display:none;">
   <div class="modal">
     <button class="modal-close" data-close>×</button>
     <h2>Бой</h2>
-
     <div class="encounter-header">
       <div class="encounter-round" id="encounter-round">Бой не начат</div>
       <div class="encounter-actions-top">
@@ -47,25 +46,21 @@
         <button id="btn-finish-enc" class="secondary small">Закончить</button>
       </div>
     </div>
-
     <div id="encounter-list" class="encounter-list"></div>
   </div>
 </div>
 
-<!-- ================= МОДАЛЬНОЕ ОКНО: УРОН/ИСЦЕЛЕНИЕ ================= -->
+<!-- ================= УРОН / ИСЦЕЛЕНИЕ ================= -->
 <div class="modal-overlay" id="modal-damage" style="display:none;">
   <div class="modal">
     <button class="modal-close" data-close>×</button>
     <h2 id="damage-modal-title">Урон</h2>
-
     <div class="field" style="margin-bottom: 12px;">
       <label for="damage-value">Значение</label>
       <input type="number" id="damage-value" min="1" step="1" value="1">
     </div>
-
     <div class="section-title">Цели</div>
     <div id="damage-targets-list" class="add-players-list"></div>
-
     <div class="actions" style="margin-top: 16px;">
       <button id="btn-confirm-damage" class="warn">Применить</button>
       <button id="btn-cancel-damage" class="secondary">Отмена</button>
@@ -74,14 +69,12 @@
   </div>
 </div>
 
-<!-- ================= МОДАЛЬНОЕ ОКНО: ЛОГИ ================= -->
+<!-- ================= ЛОГИ ================= -->
 <div class="modal-overlay" id="modal-logs" style="display:none;">
   <div class="modal">
     <button class="modal-close" data-close>×</button>
     <h2>Логи боя</h2>
-
     <div id="logs-content" style="max-height: 400px; overflow-y: auto;"></div>
-
     <div class="actions" style="margin-top: 16px;">
       <button id="btn-reset-from-logs" class="danger">Сбросить</button>
       <button id="btn-close-logs" class="secondary">Закрыть</button>
@@ -89,7 +82,7 @@
   </div>
 </div>
 
-<!-- ================= МОДАЛЬНОЕ ОКНО: ДОБАВИТЬ ИГРОКОВ ================= -->
+<!-- ================= ДОБАВИТЬ ИГРОКОВ ================= -->
 <div class="modal-overlay" id="modal-add-players" style="display:none;">
   <div class="modal">
     <button class="modal-close" data-close>×</button>
@@ -102,12 +95,11 @@
   </div>
 </div>
 
-<!-- ================= МОДАЛЬНОЕ ОКНО: ДОБАВИТЬ ВРАГА ================= -->
+<!-- ================= ДОБАВИТЬ ВРАГА ================= -->
 <div class="modal-overlay" id="modal-add-enemy" style="display:none;">
   <div class="modal">
     <button class="modal-close" data-close>×</button>
     <h2>Добавить врага</h2>
-
     <div class="row">
       <div class="field" style="grid-column: span 2;">
         <label for="enemy-name">Имя</label>
@@ -130,12 +122,10 @@
         <input type="number" id="enemy-init-bonus" min="-10" step="1" value="0">
       </div>
     </div>
-
     <div class="field" style="flex-direction: row; align-items: center; gap: 8px; margin-bottom: 12px;">
       <input type="checkbox" id="enemy-roll-d20" checked style="width: auto;">
       <label for="enemy-roll-d20" style="text-transform: none; font-size: 0.9rem; color: var(--text);">Бросок d20 (для каждого отдельно)</label>
     </div>
-
     <div class="actions" style="margin-top: 12px;">
       <button id="btn-confirm-add-enemy" class="success-btn">Добавить</button>
       <button id="btn-cancel-add-enemy" class="secondary">Отмена</button>
@@ -144,7 +134,7 @@
   </div>
 </div>
 
-<!-- ================= МОДАЛЬНОЕ ОКНО: СОСТАВ ================= -->
+<!-- ================= СОСТАВ ================= -->
 <div class="modal-overlay" id="modal-members" style="display:none;">
   <div class="modal">
     <button class="modal-close" data-close>×</button>
@@ -155,12 +145,11 @@
   </div>
 </div>
 
-<!-- ================= МОДАЛЬНОЕ ОКНО: ПЕРСОНАЖ ================= -->
+<!-- ================= ПЕРСОНАЖ ================= -->
 <div class="modal-overlay" id="modal-personaj" style="display:none;">
   <div class="modal">
     <button class="modal-close" data-close>×</button>
     <h2>Создать персонажа</h2>
-
     <div class="row">
       <div class="field">
         <label for="personaj-name">Имя</label>
@@ -171,7 +160,6 @@
         <input type="text" id="personaj-species" placeholder="Человек, эльф, орк...">
       </div>
     </div>
-
     <div class="row">
       <div class="field">
         <label for="personaj-position">Профессия</label>
@@ -186,18 +174,16 @@
         <select id="personaj-class"></select>
       </div>
     </div>
-
     <div class="field">
       <label for="personaj-info">Краткая информация</label>
       <textarea id="personaj-info" placeholder="Возраст, происхождение, особенности..."></textarea>
     </div>
-
     <button id="btn-create-personaj" style="margin-top: 8px;">Создать</button>
     <div class="error" id="personaj-error"></div>
   </div>
 </div>
 
-<!-- ================= МОДАЛЬНОЕ ОКНО: ДАТА ================= -->
+<!-- ================= ДАТА ================= -->
 <div class="modal-overlay" id="modal-date" style="display:none;">
   <div class="modal">
     <button class="modal-close" data-close>×</button>
@@ -233,7 +219,7 @@
   </div>
 </div>
 
-<!-- ================= МОДАЛЬНОЕ ОКНО: МИССИИ ================= -->
+<!-- ================= МИССИИ ================= -->
 <div class="modal-overlay" id="modal-missions" style="display:none;">
   <div class="modal">
     <button class="modal-close" data-close>×</button>
@@ -248,7 +234,7 @@
   </div>
 </div>
 
-<!-- ================= МОДАЛЬНОЕ ОКНО: ПУТЕШЕСТВИЕ ================= -->
+<!-- ================= ПУТЕШЕСТВИЕ ================= -->
 <div class="modal-overlay" id="modal-travel" style="display:none;">
   <div class="modal">
     <button class="modal-close" data-close>×</button>
@@ -268,7 +254,7 @@
   </div>
 </div>
 
-<!-- ================= МОДАЛЬНОЕ ОКНО: ФОРМА МИССИИ ================= -->
+<!-- ================= ФОРМА МИССИИ ================= -->
 <div class="modal-overlay" id="modal-mission-form" style="display:none;">
   <div class="modal">
     <button class="modal-close" data-close>×</button>
@@ -309,7 +295,7 @@
   </div>
 </div>
 
-<!-- ================= МОДАЛЬНОЕ ОКНО: БАНК ================= -->
+<!-- ================= БАНК ================= -->
 <div class="modal-overlay" id="modal-bank" style="display:none;">
   <div class="modal">
     <button class="modal-close" data-close>×</button>
@@ -330,7 +316,7 @@
   </div>
 </div>
 
-<!-- ================= МОДАЛЬНОЕ ОКНО: ИСТОРИЯ ================= -->
+<!-- ================= ИСТОРИЯ ================= -->
 <div class="modal-overlay" id="modal-history" style="display:none;">
   <div class="modal">
     <button class="modal-close" data-close>×</button>
@@ -340,7 +326,7 @@
   </div>
 </div>
 
-<!-- ================= МОДАЛЬНОЕ ОКНО: РАСХОДЫ ================= -->
+<!-- ================= РАСХОДЫ ================= -->
 <div class="modal-overlay" id="modal-expenses" style="display:none;">
   <div class="modal">
     <button class="modal-close" data-close>×</button>
@@ -377,7 +363,7 @@
   </div>
 </div>
 
-<!-- ================= МОДАЛЬНОЕ ОКНО: СКЛАД ================= -->
+<!-- ================= СКЛАД ================= -->
 <div class="modal-overlay" id="modal-warehouse" style="display:none;">
   <div class="modal">
     <button class="modal-close" data-close>×</button>
@@ -419,7 +405,7 @@
   </div>
 </div>
 
-<!-- ================= МОДАЛЬНОЕ ОКНО: ТОРГОВЦЫ ================= -->
+<!-- ================= ТОРГОВЦЫ ================= -->
 <div class="modal-overlay" id="modal-traders" style="display:none;">
   <div class="modal">
     <button class="modal-close" data-close>×</button>
@@ -465,7 +451,7 @@
   </div>
 </div>
 
-<!-- ================= МОДАЛЬНОЕ ОКНО: СТОЙЛА ================= -->
+<!-- ================= СТОЙЛА ================= -->
 <div class="modal-overlay" id="modal-stoila" style="display:none;">
   <div class="modal">
     <button class="modal-close" data-close>×</button>
@@ -561,7 +547,7 @@
   </div>
 </div>
 
-<!-- ================= МОДАЛЬНОЕ ОКНО: БИЗНЕС ================= -->
+<!-- ================= БИЗНЕС ================= -->
 <div class="modal-overlay" id="modal-business" style="display:none;">
   <div class="modal">
     <button class="modal-close" data-close>×</button>
