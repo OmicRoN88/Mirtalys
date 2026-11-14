@@ -33,7 +33,6 @@ const ANIMAL_PRESETS = {
   'Топороклюв': { speed: 50, capacity: 420 }
 };
 
-// Вес транспорта
 const TRANSPORT_PRESETS = {
   'Карета': { weight: 100 },
   'Коляска': { weight: 600 },
@@ -41,8 +40,6 @@ const TRANSPORT_PRESETS = {
   'Телега': { weight: 200 },
   'Фургон': { weight: 400 }
 };
-
-const FEED_PRICE_COPPER = 5;
 
 /* ============================================================
    КОРМ
@@ -67,7 +64,6 @@ export function chargeFeed() {
   const now = state.date;
 
   if (!last) {
-    // Первый запуск — запоминаем день, не списываем
     state.feedLastChargedDay = { year: now.year, month: now.month, day: now.day };
     persist();
     return;
@@ -82,10 +78,6 @@ export function chargeFeed() {
   state.feedLastChargedDay = { year: now.year, month: now.month, day: now.day };
   persist();
 }
-
-/* ============================================================
-   ОТРИСОВКА КОРМА
-   ============================================================ */
 
 function renderFeedBlock() {
   const info = $('stoila-feed-info');
@@ -111,21 +103,20 @@ function renderFeedBlock() {
   info.innerHTML = `
     <div class="feed-row">
       <span>Корм: <b>${feed}</b> ед.</span>
-      <span>Свободных животных: <b>${free}</b></span>
+      <span>Свободных: <b>${free}</b></span>
       <span class="${statusClass}">${status}</span>
     </div>
-    <div class="feed-row" style="margin-top: 6px; gap: 10px;">
-      <input type="number" id="stoila-feed-add" min="1" step="1" placeholder="Сколько добавить" style="width: 140px;">
+    <div class="feed-row feed-controls">
+      <input type="number" id="stoila-feed-add" min="1" step="1" placeholder="Кол-во" class="feed-input">
       <button class="small" id="btn-add-feed">Добавить корм</button>
-      <span class="hint">1 ед. = 5 медных монет</span>
+      <button class="small secondary" id="btn-remove-feed">Убрать корм</button>
     </div>
     <div class="error" id="stoila-feed-error"></div>
   `;
 
-  // Обработчик кнопки добавления корма
-  const btn = $('btn-add-feed');
-  if (btn) {
-    btn.addEventListener('click', () => {
+  const btnAdd = $('btn-add-feed');
+  if (btnAdd) {
+    btnAdd.addEventListener('click', () => {
       const errEl = $('stoila-feed-error');
       if (errEl) errEl.textContent = '';
       const input = $('stoila-feed-add');
@@ -135,6 +126,28 @@ function renderFeedBlock() {
         return;
       }
       state.feed = (state.feed || 0) + val;
+      persist();
+      input.value = '';
+      renderFeedBlock();
+    });
+  }
+
+  const btnRemove = $('btn-remove-feed');
+  if (btnRemove) {
+    btnRemove.addEventListener('click', () => {
+      const errEl = $('stoila-feed-error');
+      if (errEl) errEl.textContent = '';
+      const input = $('stoila-feed-add');
+      const val = parseInt(input.value, 10);
+      if (isNaN(val) || val <= 0) {
+        if (errEl) errEl.textContent = 'Введите количество больше 0';
+        return;
+      }
+      if (val > (state.feed || 0)) {
+        if (errEl) errEl.textContent = 'В стойлах недостаточно корма';
+        return;
+      }
+      state.feed = (state.feed || 0) - val;
       persist();
       input.value = '';
       renderFeedBlock();
@@ -260,7 +273,6 @@ function renderList() {
     list.appendChild(card);
   });
 
-  // Обработчики
   list.querySelectorAll('[data-stoila-toggle]').forEach(el => {
     el.addEventListener('click', (e) => {
       if (e.target.closest('button')) return;
@@ -373,7 +385,6 @@ function updateNameOptions() {
     }
   }
 
-  // Показать/скрыть поля в зависимости от категории
   const animalOnly = document.querySelectorAll('.stoila-animal-only');
   animalOnly.forEach(el => {
     el.style.display = category === 'Животное' ? 'flex' : 'none';
@@ -454,7 +465,6 @@ export function addStoila() {
   state.stoila.push(base);
   persist();
 
-  // Очистка
   catEl.value = 'Животное';
   updateNameOptions();
   if ($('stoila-gender')) $('stoila-gender').value = '';
@@ -480,7 +490,6 @@ function renderEquipBlock() {
   const freeAnimals = state.stoila.filter(i => i.category === 'Животное' && !i.busy);
   const freeTransport = state.stoila.filter(i => i.category === 'Транспорт' && !i.busy);
 
-  // Сохраняем текущий выбор
   const curAnimal = animalSel.value;
   const curTransport = transportSel.value;
 
@@ -564,7 +573,6 @@ function equipSelected() {
    ============================================================ */
 
 export function initStoilaHandlers() {
-  // Фильтр
   const filterSel = $('stoila-filter');
   if (filterSel) {
     CATEGORIES.forEach(c => {
@@ -576,11 +584,9 @@ export function initStoilaHandlers() {
     filterSel.addEventListener('change', renderStoila);
   }
 
-  // Категория → список названий
   const catEl = $('stoila-category');
   if (catEl) catEl.addEventListener('change', updateNameOptions);
 
-  // Список названий → пресет
   const nameSel = $('stoila-name-select');
   if (nameSel) {
     nameSel.addEventListener('change', () => {
@@ -598,11 +604,9 @@ export function initStoilaHandlers() {
     });
   }
 
-  // Кнопка «Добавить»
   const btnAdd = $('btn-add-stoila');
   if (btnAdd) btnAdd.addEventListener('click', addStoila);
 
-  // Сворачиваемая секция «Добавить»
   const formHeader = $('stoila-form-header');
   const formBody = $('stoila-form-body');
   const formArrow = $('stoila-form-arrow');
@@ -616,7 +620,6 @@ export function initStoilaHandlers() {
     });
   }
 
-  // Сворачиваемая секция «Снарядить»
   const equipHeader = $('stoila-equip-header');
   const equipBody = $('stoila-equip-body');
   const equipArrow = $('stoila-equip-arrow');
@@ -630,7 +633,6 @@ export function initStoilaHandlers() {
     });
   }
 
-  // Снарядить: обновление свободного веса при изменении
   const animalSel = $('equip-animal');
   const transportSel = $('equip-transport');
   const extraWeightEl = $('equip-extra-weight');
@@ -641,6 +643,5 @@ export function initStoilaHandlers() {
   const btnEquip = $('btn-equip');
   if (btnEquip) btnEquip.addEventListener('click', equipSelected);
 
-  // Первичное заполнение
   if (catEl && nameSel) updateNameOptions();
 }
