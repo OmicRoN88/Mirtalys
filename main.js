@@ -30,7 +30,7 @@ import {
 } from './modules/missions.js';
 
 import {
-  renderStoila, initStoilaHandlers
+  renderStoila, initStoilaHandlers, chargeFeed
 } from './modules/stoila.js';
 
 /* ============================================================
@@ -41,6 +41,7 @@ window.__renderBank = renderBank;
 window.__renderExpenseInfo = renderExpenseInfo;
 window.__renderMissions = renderMissions;
 window.__checkOverdueMissions = checkOverdueMissions;
+window.__chargeFeed = chargeFeed;
 
 /* ============================================================
    ОТКРЫТИЕ / ЗАКРЫТИЕ МОДАЛЬНЫХ ОКОН
