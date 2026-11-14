@@ -723,11 +723,25 @@ button.warn:hover { background: #d08030; }
 
 .feed-row {
   display: flex;
-  gap: 16px;
+  gap: 12px;
   flex-wrap: wrap;
   align-items: center;
+  font-size: 0.85rem;
 }
 .feed-row b { color: var(--text); }
+.feed-controls {
+  margin-top: 6px;
+  gap: 8px;
+}
+.feed-input {
+  width: 90px !important;
+  padding: 5px 8px !important;
+  font-size: 0.85rem !important;
+}
+.feed-controls button {
+  padding: 5px 10px !important;
+  font-size: 0.78rem !important;
+}
 .feed-ok { color: var(--success); font-weight: 600; }
 .feed-empty { color: var(--error); font-weight: 600; }
 .feed-idle { color: var(--text-dim); font-weight: 600; }
