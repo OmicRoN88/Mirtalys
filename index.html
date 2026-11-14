@@ -314,58 +314,56 @@
     <h2>Стойла гильдии</h2>
 
     <!-- Сворачиваемая секция «Добавить» -->
-    <div class="stoila-form-section">
-      <div class="mc-head" id="stoila-form-header" style="background: var(--panel-2); border: 1px solid var(--border); border-radius: 10px;">
-        <div>
-          <span class="stoila-name">Добавить</span>
-        </div>
-        <span class="mc-arrow" id="stoila-form-arrow">▼</span>
+    <div class="mc-head" id="stoila-form-header" style="background: var(--panel-2); border: 1px solid var(--border); border-radius: 10px;">
+      <div>
+        <span class="stoila-name">Добавить</span>
       </div>
-      <div id="stoila-form-body" style="display:none; flex-direction: column; gap: 10px; padding: 12px 0;">
-        <div class="row">
-          <div class="field">
-            <label for="stoila-category">Категория</label>
-            <select id="stoila-category">
-              <option value="Животное">Животное</option>
-              <option value="Транспорт">Транспорт</option>
-            </select>
-          </div>
-          <div class="field">
-            <label for="stoila-name-select">Название</label>
-            <select id="stoila-name-select"></select>
-          </div>
-          <div class="field" id="stoila-name-manual-wrapper" style="display:none;">
-            <label for="stoila-name-manual">Своё название</label>
-            <input type="text" id="stoila-name-manual" placeholder="Введите название">
-          </div>
-          <div class="field">
-            <label for="stoila-gender">Пол</label>
-            <select id="stoila-gender">
-              <option value="">—</option>
-              <option value="Мужской">Мужской</option>
-              <option value="Женский">Женский</option>
-            </select>
-          </div>
-          <div class="field">
-            <label for="stoila-nickname">Кличка</label>
-            <input type="text" id="stoila-nickname" placeholder="Ветерок">
-          </div>
-          <div class="field">
-            <label for="stoila-capacity">Грузоподъёмность</label>
-            <input type="number" id="stoila-capacity" min="0" step="1">
-          </div>
-          <div class="field">
-            <label for="stoila-speed">Скорость</label>
-            <input type="number" id="stoila-speed" min="0" step="1">
-          </div>
+      <span class="mc-arrow" id="stoila-form-arrow">▼</span>
+    </div>
+    <div id="stoila-form-body" style="display:none; flex-direction: column; gap: 10px; padding: 12px 0;">
+      <div class="row">
+        <div class="field">
+          <label for="stoila-category">Категория</label>
+          <select id="stoila-category">
+            <option value="Животное">Животное</option>
+            <option value="Транспорт">Транспорт</option>
+          </select>
         </div>
         <div class="field">
-          <label for="stoila-note">Примечание</label>
-          <textarea id="stoila-note" placeholder="Нашли её в поле. Сильно голодала..."></textarea>
+          <label for="stoila-name-select">Название</label>
+          <select id="stoila-name-select"></select>
         </div>
-        <button id="btn-add-stoila">Добавить</button>
-        <div class="error" id="stoila-error"></div>
+        <div class="field" id="stoila-name-manual-wrapper" style="display:none;">
+          <label for="stoila-name-manual">Своё название</label>
+          <input type="text" id="stoila-name-manual" placeholder="Введите название">
+        </div>
+        <div class="field">
+          <label for="stoila-gender">Пол</label>
+          <select id="stoila-gender">
+            <option value="">—</option>
+            <option value="Мужской">Мужской</option>
+            <option value="Женский">Женский</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="stoila-nickname">Кличка</label>
+          <input type="text" id="stoila-nickname" placeholder="Ветерок">
+        </div>
+        <div class="field">
+          <label for="stoila-capacity">Грузоподъёмность</label>
+          <input type="number" id="stoila-capacity" min="0" step="1">
+        </div>
+        <div class="field">
+          <label for="stoila-speed">Скорость</label>
+          <input type="number" id="stoila-speed" min="0" step="1">
+        </div>
       </div>
+      <div class="field">
+        <label for="stoila-note">Примечание</label>
+        <textarea id="stoila-note" placeholder="Нашли её в поле. Сильно голодала..."></textarea>
+      </div>
+      <button id="btn-add-stoila">Добавить</button>
+      <div class="error" id="stoila-error"></div>
     </div>
 
     <div class="section-title">Содержимое стойл</div>
