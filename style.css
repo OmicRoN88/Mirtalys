@@ -865,6 +865,17 @@ button.warn:hover { background: #d08030; }
   color: var(--error);
 }
 
+.enc-concentration-badge {
+  font-size: 0.72rem;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 4px;
+  background: rgba(124, 92, 255, 0.2);
+  color: var(--accent);
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
 .enc-arrow {
   margin-left: auto;
   color: var(--text-dim);
