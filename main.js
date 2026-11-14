@@ -41,6 +41,10 @@ import {
   renderTravel, initTravelHandlers
 } from './modules/travel.js';
 
+import {
+  renderEncounter, initEncounterHandlers
+} from './modules/encounter.js';
+
 /* ============================================================
    «МОСТИКИ»
    ============================================================ */
@@ -86,6 +90,7 @@ async function openModal(name) {
   }
   if (name === 'stoila') { renderStoila(); showError('stoila-error', ''); }
   if (name === 'travel') { renderTravel(); }
+  if (name === 'encounter') { renderEncounter(); }
 }
 
 function closeModal(el) {
@@ -128,6 +133,7 @@ initMissionsHandlers();
 initStoilaHandlers();
 initPersonajHandlers();
 initTravelHandlers();
+initEncounterHandlers();
 
 /* ============================================================
    ПЕРВИЧНАЯ ОТРИСОВКА
