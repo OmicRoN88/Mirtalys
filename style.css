@@ -192,18 +192,9 @@ input[type=number] { -moz-appearance: textfield; }
 input::-webkit-outer-spin-button,
 input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
 
-.class-row {
-  display: flex;
-  gap: 8px;
-  align-items: center;
-}
+.class-row { display: flex; gap: 8px; align-items: center; }
 .class-row select { flex: 1; }
-.class-toggle {
-  min-width: 38px;
-  padding: 9px 12px;
-  font-size: 1rem;
-  line-height: 1;
-}
+.class-toggle { min-width: 38px; padding: 9px 12px; font-size: 1rem; line-height: 1; }
 .class-second.hidden { display: none; }
 
 /* ============================================================
@@ -296,11 +287,7 @@ button.warn:hover { background: #d08030; }
 }
 .mc-role.player { background: rgba(74,222,128,0.15); color: var(--success); }
 .mc-role.npc { background: rgba(255,184,107,0.15); color: var(--warning); }
-.mc-titles {
-  font-size: 0.8rem;
-  color: var(--text-dim);
-  margin-top: 2px;
-}
+.mc-titles { font-size: 0.8rem; color: var(--text-dim); margin-top: 2px; }
 .mc-titles span { margin-right: 10px; }
 .mc-arrow { color: var(--text-dim); font-size: 0.8rem; }
 
@@ -461,11 +448,7 @@ button.warn:hover { background: #d08030; }
 }
 .expense-total-row b { color: var(--gold); }
 
-.actions {
-  display: flex;
-  gap: 10px;
-  flex-wrap: wrap;
-}
+.actions { display: flex; gap: 10px; flex-wrap: wrap; }
 
 /* ============================================================
    СКЛАД
@@ -603,14 +586,9 @@ button.warn:hover { background: #d08030; }
   background: rgba(255,92,108,0.1);
   border-left-color: var(--error);
 }
-.mission-card.accepted.overdue {
-  border-left-color: var(--error);
-}
+.mission-card.accepted.overdue { border-left-color: var(--error); }
 
-.mission-goal {
-  font-weight: 600;
-  color: var(--text);
-}
+.mission-goal { font-weight: 600; color: var(--text); }
 .mission-meta {
   font-size: 0.75rem;
   padding: 2px 8px;
@@ -680,9 +658,7 @@ button.warn:hover { background: #d08030; }
   margin-top: 4px;
   flex-wrap: wrap;
 }
-.stoila-status {
-  font-weight: 600;
-}
+.stoila-status { font-weight: 600; }
 .stoila-status.free { color: var(--success); }
 .stoila-status.busy { color: var(--warning); }
 .stoila-actions {
@@ -704,19 +680,13 @@ button.warn:hover { background: #d08030; }
   font-size: 0.85rem;
 }
 .feed-row b { color: var(--text); }
-.feed-controls {
-  margin-top: 6px;
-  gap: 8px;
-}
+.feed-controls { margin-top: 6px; gap: 8px; }
 .feed-input {
   width: 90px !important;
   padding: 5px 8px !important;
   font-size: 0.85rem !important;
 }
-.feed-controls button {
-  padding: 5px 10px !important;
-  font-size: 0.78rem !important;
-}
+.feed-controls button { padding: 5px 10px !important; font-size: 0.78rem !important; }
 .feed-ok { color: var(--success); font-weight: 600; }
 .feed-empty { color: var(--error); font-weight: 600; }
 .feed-idle { color: var(--text-dim); font-weight: 600; }
@@ -761,21 +731,9 @@ button.warn:hover { background: #d08030; }
   padding-bottom: 12px;
   border-bottom: 1px solid var(--border);
 }
-.encounter-round {
-  font-size: 1.2rem;
-  font-weight: 700;
-  color: var(--gold);
-}
-.encounter-actions-top {
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-.encounter-list {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
+.encounter-round { font-size: 1.2rem; font-weight: 700; color: var(--gold); }
+.encounter-actions-top { display: flex; gap: 8px; flex-wrap: wrap; }
+.encounter-list { display: flex; flex-direction: column; gap: 8px; }
 
 .encounter-row {
   display: flex;
@@ -854,6 +812,15 @@ button.warn:hover { background: #d08030; }
 .enc-hp-clickable:hover,
 .enc-ac-clickable:hover {
   background: rgba(124,92,255,0.15);
+}
+
+.enc-passive {
+  font-size: 0.9rem;
+  color: var(--text-dim);
+  font-weight: 500;
+  padding: 2px 6px;
+  background: rgba(124,92,255,0.1);
+  border-radius: 4px;
 }
 
 .enc-bloodied {
@@ -961,7 +928,7 @@ button.warn:hover { background: #d08030; }
   align-items: center;
 }
 
-/* Спасброски от смерти */
+/* Спасброски */
 .death-saves {
   display: flex;
   flex-direction: column;
