@@ -44,11 +44,48 @@
         <button id="btn-add-players-enc" class="secondary small">Добавить игроков</button>
         <button id="btn-add-enemy-enc" class="danger small">Добавить врага</button>
         <button id="btn-next-turn" class="warn">Начать бой</button>
-        <button id="btn-reset-enc" class="secondary small">Сброс</button>
+        <button id="btn-finish-enc" class="secondary small">Закончить</button>
       </div>
     </div>
 
     <div id="encounter-list" class="encounter-list"></div>
+  </div>
+</div>
+
+<!-- ================= МОДАЛЬНОЕ ОКНО: УРОН/ИСЦЕЛЕНИЕ ================= -->
+<div class="modal-overlay" id="modal-damage" style="display:none;">
+  <div class="modal">
+    <button class="modal-close" data-close>×</button>
+    <h2 id="damage-modal-title">Урон</h2>
+
+    <div class="field" style="margin-bottom: 12px;">
+      <label for="damage-value">Значение</label>
+      <input type="number" id="damage-value" min="1" step="1" value="1">
+    </div>
+
+    <div class="section-title">Цели</div>
+    <div id="damage-targets-list" class="add-players-list"></div>
+
+    <div class="actions" style="margin-top: 16px;">
+      <button id="btn-confirm-damage" class="warn">Применить</button>
+      <button id="btn-cancel-damage" class="secondary">Отмена</button>
+    </div>
+    <div class="error" id="damage-error"></div>
+  </div>
+</div>
+
+<!-- ================= МОДАЛЬНОЕ ОКНО: ЛОГИ ================= -->
+<div class="modal-overlay" id="modal-logs" style="display:none;">
+  <div class="modal">
+    <button class="modal-close" data-close>×</button>
+    <h2>Логи боя</h2>
+
+    <div id="logs-content" style="max-height: 400px; overflow-y: auto;"></div>
+
+    <div class="actions" style="margin-top: 16px;">
+      <button id="btn-reset-from-logs" class="danger">Сбросить</button>
+      <button id="btn-close-logs" class="secondary">Закрыть</button>
+    </div>
   </div>
 </div>
 
