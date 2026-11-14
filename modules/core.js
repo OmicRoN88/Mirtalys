@@ -51,12 +51,7 @@ function defaultState() {
     stoila: [],
     feed: 0,
     feedLastChargedDay: null,
-    encounter: {
-      active: false,
-      round: 1,
-      turnIndex: 0,
-      combatants: []
-    }
+    encounter: { active: false, round: 1, turnIndex: 0, combatants: [] }
   };
 }
 
@@ -79,9 +74,7 @@ export function loadState() {
     if (!Array.isArray(s.stoila)) s.stoila = [];
     if (typeof s.feed !== 'number') s.feed = 0;
     if (!s.feedLastChargedDay) s.feedLastChargedDay = null;
-    if (!s.encounter) {
-      s.encounter = { active: false, round: 1, turnIndex: 0, combatants: [] };
-    }
+    if (!s.encounter) s.encounter = { active: false, round: 1, turnIndex: 0, combatants: [] };
     s.members.forEach(m => {
       if (typeof m.fired !== 'boolean') m.fired = false;
       if (!m.type) m.type = 'Игрок';
@@ -92,6 +85,11 @@ export function loadState() {
       if (!Array.isArray(m.classes)) m.classes = [];
       if (typeof m.level !== 'number') m.level = 1;
       if (!m.species) m.species = '';
+      if (typeof m.hp !== 'number') m.hp = 10;
+      if (typeof m.maxHp !== 'number') m.maxHp = 10;
+      if (typeof m.ac !== 'number') m.ac = 10;
+      if (typeof m.passivePerception !== 'number') m.passivePerception = 10;
+      if (typeof m.weight !== 'number') m.weight = 0;
       delete m.status;
       delete m.statusDate;
     });
@@ -109,9 +107,7 @@ export function saveState(state) {
 
 export let state = loadState();
 
-export function persist() {
-  saveState(state);
-}
+export function persist() { saveState(state); }
 
 export function ensureAccount(name) {
   if (!state.accounts[name]) {
@@ -121,7 +117,7 @@ export function ensureAccount(name) {
 }
 
 /* ============================================================
-   РАНГИ ГИЛЬДИИ
+   РАНГИ
    ============================================================ */
 
 export function getActivePlayers() {
