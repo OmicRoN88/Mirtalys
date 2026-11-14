@@ -1,6 +1,5 @@
 /* ============================================================
    STOILA.JS — Логика раздела «Стойла»
-   Транспорт, животные, упряжь
    ============================================================ */
 
 import {
@@ -14,8 +13,34 @@ import { showConfirm } from './dialogi.js';
    КОНСТАНТЫ
    ============================================================ */
 
-const CATEGORIES = ['Животное', 'Транспорт', 'Упряжь'];
-const CATEGORY_ORDER = { 'Животное': 0, 'Транспорт': 1, 'Упряжь': 2 };
+const CATEGORIES = ['Животное', 'Транспорт'];
+const CATEGORY_ORDER = { 'Животное': 0, 'Транспорт': 1 };
+
+// Списки названий по категориям
+const ANIMAL_NAMES = ['Лошадь тягловая', 'Лошадь ездовая', 'Мул', 'Боевой конь',
+                      'Верблюд', 'Слон', 'Пони', 'Топороклюв', 'Другое'];
+const TRANSPORT_NAMES = ['Телега', 'Фургон', 'Коляска', 'Карета', 'Сани', 'Другое'];
+
+// Предустановки: скорость и грузоподъёмность
+const ANIMAL_PRESETS = {
+  'Боевой конь': { speed: 60, capacity: 540 },
+  'Верблюд': { speed: 50, capacity: 480 },
+  'Лошадь ездовая': { speed: 60, capacity: 480 },
+  'Лошадь тягловая': { speed: 40, capacity: 540 },
+  'Мул': { speed: 40, capacity: 420 },
+  'Пони': { speed: 40, capacity: 225 },
+  'Слон': { speed: 40, capacity: 1320 },
+  'Топороклюв': { speed: 50, capacity: 420 }
+};
+
+// Для транспорта — «вес» (будем писать в capacity)
+const TRANSPORT_PRESETS = {
+  'Карета': { capacity: 100 },
+  'Коляска': { capacity: 600 },
+  'Сани': { capacity: 300 },
+  'Телега': { capacity: 200 },
+  'Фургон': { capacity: 400 }
+};
 
 /* ============================================================
    ОТРИСОВКА СПИСКА
@@ -37,7 +62,6 @@ export function renderStoila() {
     return;
   }
 
-  // Сортировка: Животное → Транспорт → Упряжь, внутри — по названию
   items.sort((a, b) => {
     const oa = CATEGORY_ORDER[a.category] ?? 9;
     const ob = CATEGORY_ORDER[b.category] ?? 9;
@@ -55,9 +79,9 @@ export function renderStoila() {
     if (item.category === 'Животное' && item.capacity) {
       const std = item.capacity;
       const withHarness = std * 5;
-      capacityStr = `${std} / ${withHarness} фунт.`;
+      capacityStr = `${std} / ${withHarness}`;
     } else if (item.capacity) {
-      capacityStr = `${item.capacity} фунт.`;
+      capacityStr = `${item.capacity}`;
     }
 
     const statusLabel = item.busy ? 'Занято' : 'Свободно';
@@ -74,7 +98,7 @@ export function renderStoila() {
           <div class="stoila-sub">
             <span class="stoila-status ${statusClass}">${statusLabel}</span>
             ${capacityStr ? `<span>Грузоподъёмность: ${capacityStr}</span>` : ''}
-            ${item.speed ? `<span>Скорость: ${item.speed} фт.</span>` : ''}
+            ${item.speed ? `<span>Скорость: ${item.speed}</span>` : ''}
           </div>
         </div>
         <span class="mc-arrow">${arrow}</span>
@@ -104,11 +128,11 @@ export function renderStoila() {
             <input type="text" data-field="nickname" data-id="${item.id}" value="${escapeAttr(item.nickname)}" placeholder="Ветерок">
           </div>
           <div class="field">
-            <label>Грузоподъёмность (фунт.)</label>
+            <label>Грузоподъёмность</label>
             <input type="number" data-field="capacity" data-id="${item.id}" value="${item.capacity || ''}" min="0" step="1">
           </div>
           <div class="field">
-            <label>Скорость (фт.)</label>
+            <label>Скорость</label>
             <input type="number" data-field="speed" data-id="${item.id}" value="${item.speed || ''}" min="0" step="1">
           </div>
         </div>
@@ -129,7 +153,6 @@ export function renderStoila() {
 
   // ---------- Обработчики ----------
 
-  // Раскрытие/сворачивание
   list.querySelectorAll('[data-stoila-toggle]').forEach(el => {
     el.addEventListener('click', (e) => {
       if (e.target.closest('button')) return;
@@ -141,7 +164,6 @@ export function renderStoila() {
     });
   });
 
-  // Статус «Свободно» / «Занято»
   list.querySelectorAll('[data-set-free]').forEach(btn => {
     btn.addEventListener('click', () => {
       const item = state.stoila.find(x => x.id === btn.dataset.setFree);
@@ -161,7 +183,6 @@ export function renderStoila() {
     });
   });
 
-  // Сохранение
   list.querySelectorAll('[data-save]').forEach(btn => {
     btn.addEventListener('click', () => {
       const id = btn.dataset.save;
@@ -189,7 +210,6 @@ export function renderStoila() {
     });
   });
 
-  // Удаление
   list.querySelectorAll('[data-delete]').forEach(btn => {
     btn.addEventListener('click', async () => {
       const id = btn.dataset.delete;
@@ -205,6 +225,59 @@ export function renderStoila() {
 }
 
 /* ============================================================
+   ФОРМА: обновление списка названий при смене категории
+   ============================================================ */
+
+function updateNameOptions() {
+  const category = $('stoila-category').value;
+  const nameSel = $('stoila-name-select');
+  const nameManual = $('stoila-name-manual');
+  const nameManualWrapper = $('stoila-name-manual-wrapper');
+
+  let names = [];
+  if (category === 'Животное') names = ANIMAL_NAMES;
+  else if (category === 'Транспорт') names = TRANSPORT_NAMES;
+
+  nameSel.innerHTML = '';
+  names.forEach(n => {
+    const opt = document.createElement('option');
+    opt.value = n;
+    opt.textContent = n;
+    nameSel.appendChild(opt);
+  });
+
+  // Скрываем/показываем ручное поле
+  if (names.includes('Другое')) {
+    const isOther = nameSel.value === 'Другое';
+    nameManualWrapper.style.display = isOther ? 'flex' : 'none';
+    if (!isOther) nameManual.value = '';
+  } else {
+    nameManualWrapper.style.display = 'none';
+    nameManual.value = '';
+  }
+
+  applyPreset();
+}
+
+function applyPreset() {
+  const category = $('stoila-category').value;
+  const name = $('stoila-name-select').value;
+  const capEl = $('stoila-capacity');
+  const spdEl = $('stoila-speed');
+
+  if (category === 'Животное' && ANIMAL_PRESETS[name]) {
+    capEl.value = ANIMAL_PRESETS[name].capacity;
+    spdEl.value = ANIMAL_PRESETS[name].speed;
+  } else if (category === 'Транспорт' && TRANSPORT_PRESETS[name]) {
+    capEl.value = TRANSPORT_PRESETS[name].capacity;
+    spdEl.value = '';
+  } else {
+    capEl.value = '';
+    spdEl.value = '';
+  }
+}
+
+/* ============================================================
    ДОБАВЛЕНИЕ
    ============================================================ */
 
@@ -212,8 +285,13 @@ export function addStoila() {
   const errEl = $('stoila-error');
   if (errEl) errEl.textContent = '';
 
-  const name = $('stoila-name').value.trim();
   const category = $('stoila-category').value;
+  const nameSel = $('stoila-name-select').value;
+  const nameManual = $('stoila-name-manual').value.trim();
+
+  let name = nameSel;
+  if (nameSel === 'Другое') name = nameManual;
+
   const gender = $('stoila-gender').value;
   const nickname = $('stoila-nickname').value.trim();
   const capacity = parseFloat($('stoila-capacity').value) || 0;
@@ -231,13 +309,14 @@ export function addStoila() {
   persist();
 
   // Очистка формы
-  $('stoila-name').value = '';
   $('stoila-category').value = 'Животное';
+  updateNameOptions();
   $('stoila-gender').value = '';
   $('stoila-nickname').value = '';
   $('stoila-capacity').value = '';
   $('stoila-speed').value = '';
   $('stoila-note').value = '';
+  $('stoila-name-manual').value = '';
 
   renderStoila();
 }
@@ -257,6 +336,33 @@ export function initStoilaHandlers() {
   });
   filterSel.addEventListener('change', renderStoila);
 
+  // Категория → список названий
+  $('stoila-category').addEventListener('change', updateNameOptions);
+
+  // Список названий → пресет
+  $('stoila-name-select').addEventListener('change', () => {
+    const nameSel = $('stoila-name-select');
+    const nameManualWrapper = $('stoila-name-manual-wrapper');
+    if (nameSel.value === 'Другое') {
+      nameManualWrapper.style.display = 'flex';
+    } else {
+      nameManualWrapper.style.display = 'none';
+      $('stoila-name-manual').value = '';
+    }
+    applyPreset();
+  });
+
   // Кнопка «Добавить»
   $('btn-add-stoila').addEventListener('click', addStoila);
+
+  // Сворачиваемая форма
+  $('btn-toggle-stoila-form').addEventListener('click', () => {
+    const wrapper = $('stoila-form-wrapper');
+    const isHidden = wrapper.style.display === 'none';
+    wrapper.style.display = isHidden ? 'flex' : 'none';
+    $('btn-toggle-stoila-form').textContent = isHidden ? 'Скрыть форму' : 'Добавить';
+  });
+
+  // Первичное заполнение
+  updateNameOptions();
 }
