@@ -27,6 +27,7 @@
   <button data-modal="business">Бизнес</button>
   <button data-modal="stoila">Стойла</button>
   <button data-modal="members">Состав</button>
+  <button data-modal="personaj">Персонаж</button>
 </div>
 
 <!-- ================= МОДАЛЬНОЕ ОКНО: СОСТАВ ================= -->
@@ -35,23 +36,51 @@
     <button class="modal-close" data-close>×</button>
     <h2>Состав гильдии</h2>
 
+    <button id="btn-add-npc">Добавить НИП</button>
+    <div class="error" id="members-error"></div>
+    <div class="member-list" id="members-list"></div>
+  </div>
+</div>
+
+<!-- ================= МОДАЛЬНОЕ ОКНО: ПЕРСОНАЖ ================= -->
+<div class="modal-overlay" id="modal-personaj" style="display:none;">
+  <div class="modal">
+    <button class="modal-close" data-close>×</button>
+    <h2>Создать персонажа</h2>
+
     <div class="row">
-      <div class="field" style="grid-column: span 2;">
-        <label for="member-name">Имя</label>
-        <input type="text" id="member-name" placeholder="Имя персонажа или НИП">
+      <div class="field">
+        <label for="personaj-name">Имя</label>
+        <input type="text" id="personaj-name" placeholder="Имя персонажа">
       </div>
       <div class="field">
-        <label for="member-type">Тип</label>
-        <select id="member-type">
-          <option value="Игрок">Игрок</option>
-          <option value="НИП">НИП</option>
-        </select>
+        <label for="personaj-species">Вид</label>
+        <input type="text" id="personaj-species" placeholder="Человек, эльф, орк...">
       </div>
     </div>
 
-    <button id="btn-add-member">Добавить</button>
-    <div class="error" id="members-error"></div>
-    <div class="member-list" id="members-list"></div>
+    <div class="row">
+      <div class="field">
+        <label for="personaj-position">Профессия</label>
+        <input type="text" id="personaj-position" placeholder="Кузнец, алхимик...">
+      </div>
+      <div class="field">
+        <label for="personaj-level">Уровень</label>
+        <select id="personaj-level"></select>
+      </div>
+      <div class="field">
+        <label for="personaj-class">Класс</label>
+        <select id="personaj-class"></select>
+      </div>
+    </div>
+
+    <div class="field">
+      <label for="personaj-info">Краткая информация</label>
+      <textarea id="personaj-info" placeholder="Возраст, происхождение, особенности..."></textarea>
+    </div>
+
+    <button id="btn-create-personaj" style="margin-top: 8px;">Создать</button>
+    <div class="error" id="personaj-error"></div>
   </div>
 </div>
 
