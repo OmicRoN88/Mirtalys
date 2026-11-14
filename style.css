@@ -844,6 +844,18 @@ button.warn:hover { background: #d08030; }
 .enc-stats b.hp-mid { color: var(--warning); }
 .enc-stats b.hp-low { color: var(--error); }
 
+.enc-hp-clickable,
+.enc-ac-clickable {
+  cursor: pointer;
+  padding: 2px 6px;
+  border-radius: 4px;
+  transition: background 0.2s;
+}
+.enc-hp-clickable:hover,
+.enc-ac-clickable:hover {
+  background: rgba(124,92,255,0.15);
+}
+
 .enc-bloodied {
   font-size: 0.72rem;
   font-weight: 600;
@@ -933,24 +945,28 @@ button.warn:hover { background: #d08030; }
   align-items: center;
 }
 
-/* Спасброски от смерти */
+/* Спасброски от смерти (горизонтально) */
 .death-saves {
   display: flex;
-  flex-wrap: wrap;
-  gap: 16px;
+  flex-direction: column;
+  gap: 8px;
   margin: 10px 0;
-  padding: 8px 12px;
+  padding: 10px 14px;
   background: rgba(255, 92, 108, 0.05);
   border: 1px solid rgba(255, 92, 108, 0.25);
   border-radius: 8px;
-  align-items: center;
 }
-.death-save-col { display: flex; flex-direction: column; gap: 4px; }
+.death-save-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
 .death-save-label {
-  font-size: 0.72rem;
+  font-size: 0.75rem;
   text-transform: uppercase;
   letter-spacing: 0.3px;
   font-weight: 600;
+  min-width: 70px;
 }
 .death-save-label.success-label { color: var(--success); }
 .death-save-label.failure-label { color: var(--error); }
@@ -963,12 +979,6 @@ button.warn:hover { background: #d08030; }
   accent-color: var(--success);
 }
 .death-checkbox.failure { accent-color: var(--error); }
-.death-save-hint {
-  font-size: 0.75rem;
-  color: var(--warning);
-  font-style: italic;
-  margin-left: auto;
-}
 
 /* ============================================================
    ЛОГИ БОЯ
