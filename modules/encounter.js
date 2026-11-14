@@ -35,8 +35,6 @@ function isStable(c) { return c.status === 'stable'; }
 
 function mustSkipTurn(c) {
   if (isDead(c)) return true;
-  // Бессознательные и стабилизированные НЕ пропускаются —
-  // их ход нужен для спасбросков (или просто чтобы Мастер видел)
   if (isUnconscious(c)) return false;
   if (isStable(c)) return true;
   return c.conditions && c.conditions.some(cond => SKIP_TURN_CONDITIONS.includes(cond));
@@ -73,6 +71,7 @@ function getLogEntry(id) {
 
 function ensureDeathSaves(c) {
   if (!c.deathSaves) c.deathSaves = { successes: 0, failures: 0 };
+  if (typeof c.lastSaveRound !== 'number') c.lastSaveRound = 0;
 }
 
 /* ============================================================
@@ -111,12 +110,8 @@ function showHpDialog(combatant, onDone) {
   overlay.querySelector('[data-damage]').addEventListener('click', () => {
     const val = parseInt(input.value, 10);
     if (isNaN(val) || val <= 0) return;
-    if (tempCheck.checked) {
-      // Установить THP
-      combatant.tempHp = val;
-    } else {
-      applyDamage(combatant, val, null);
-    }
+    if (tempCheck.checked) combatant.tempHp = val;
+    else applyDamage(combatant, val, null);
     persist();
     close();
     onDone();
@@ -125,11 +120,8 @@ function showHpDialog(combatant, onDone) {
   overlay.querySelector('[data-heal]').addEventListener('click', () => {
     const val = parseInt(input.value, 10);
     if (isNaN(val) || val <= 0) return;
-    if (tempCheck.checked) {
-      combatant.tempHp = val;
-    } else {
-      applyHeal(combatant, val, null);
-    }
+    if (tempCheck.checked) combatant.tempHp = val;
+    else applyHeal(combatant, val, null);
     persist();
     close();
     onDone();
@@ -180,6 +172,7 @@ function showAcDialog(combatant, onDone) {
 
 function applyDamage(target, val, sourceLog) {
   let dmg = val;
+
   // Сначала THP
   if (target.tempHp > 0) {
     const absorbed = Math.min(target.tempHp, dmg);
@@ -187,27 +180,27 @@ function applyDamage(target, val, sourceLog) {
     dmg -= absorbed;
   }
 
-  // Применяем к HP
-  const newHp = target.hp - dmg;
+  // Оставшийся урон, который пойдёт в HP
+  const damageToHp = dmg;
+  const currentHp = target.hp;
+  const maxHp = target.maxHp;
+
+  // Условие мгновенной смерти: урон (после THP) >= текущий HP + максимальный HP
+  // Например: HP 10/10, урон 20 → 20 >= 10 + 10 → смерть
+  const isMassiveDeath = !target.isEnemy && damageToHp >= currentHp + maxHp;
+
+  const newHp = currentHp - damageToHp;
 
   if (newHp <= 0) {
     target.hp = 0;
 
     if (target.isEnemy) {
-      // Враги умирают сразу
       if (target.status !== 'dead') {
         target.status = 'dead';
         if (sourceLog) sourceLog.kills += 1;
       }
     } else {
-      // Игрок: проверяем на мгновенную смерть
-      // Урон, прошедший после THP = dmg
-      // Условие мгновенной смерти: dmg >= текущий_HP + максимальный_HP
-      // Но HP уже 0, поэтому используем исходный HP
-      const originalHp = target.hp + dmg; // = исходный HP
-      const massiveDamage = dmg >= originalHp + target.maxHp;
-
-      if (massiveDamage) {
+      if (isMassiveDeath) {
         // Мгновенная смерть
         target.status = 'dead';
         if (sourceLog) sourceLog.kills += 1;
@@ -242,6 +235,7 @@ function applyHeal(target, val, sourceLog) {
     if (wasUnconscious) {
       target.status = 'alive';
       target.deathSaves = { successes: 0, failures: 0 };
+      target.lastSaveRound = 0;
       if (!Array.isArray(target.conditions)) target.conditions = [];
       if (!target.conditions.includes('Опрокинутый')) {
         target.conditions.push('Опрокинутый');
@@ -276,7 +270,22 @@ function openDamageModal(sourceId, mode) {
   if (errEl) errEl.textContent = '';
 
   const enc = state.encounter;
-  const sorted = [...enc.combatants].sort((a, b) => (b.initiative || 0) - (a.initiative || 0));
+  const source = enc.combatants.find(c => c.id === sourceId);
+  const sourceIsEnemy = source ? source.isEnemy : false;
+
+  // Сортировка целей:
+  // Если источник — враг: сперва игроки, потом враги
+  // Если источник — игрок: сперва враги, потом игроки
+  const sorted = [...enc.combatants].sort((a, b) => {
+    if (sourceIsEnemy) {
+      // Игроки (isEnemy=false) идут первыми
+      if (a.isEnemy !== b.isEnemy) return a.isEnemy ? 1 : -1;
+    } else {
+      // Враги (isEnemy=true) идут первыми
+      if (a.isEnemy !== b.isEnemy) return a.isEnemy ? -1 : 1;
+    }
+    return (b.initiative || 0) - (a.initiative || 0);
+  });
 
   list.innerHTML = sorted.map(c => {
     const dead = isDead(c);
@@ -402,26 +411,24 @@ export function renderEncounter() {
       });
     }
 
-    // Спасброски (только для бессознательных, НЕ для стабилизированных)
+    // Спасброски (только для бессознательных)
     let deathSavesHtml = '';
     if (unconscious && !c.isEnemy) {
       ensureDeathSaves(c);
+      const canAdd = c.lastSaveRound !== enc.round;
       deathSavesHtml = `
         <div class="death-saves">
           <div class="death-save-row">
             <span class="death-save-label success-label">Успехи</span>
-            <div class="death-save-cells">
-              ${[0,1,2].map(i => `
-                <input type="checkbox" class="death-checkbox" data-ds="success" data-idx="${i}" data-id="${c.id}" ${i < c.deathSaves.successes ? 'checked' : ''}>
-              `).join('')}
+            <div class="death-save-cells" data-save-block="success" data-id="${c.id}">
+              ${[0,1,2].map(i => `<span class="death-cell ${i < c.deathSaves.successes ? 'filled success' : ''}"></span>`).join('')}
             </div>
+            ${canAdd ? `<span class="death-save-hint">клик — +1 (макс 2 за раунд)</span>` : `<span class="death-save-hint" style="color:var(--text-dim);">уже бросали в этом раунде</span>`}
           </div>
           <div class="death-save-row">
             <span class="death-save-label failure-label">Провалы</span>
-            <div class="death-save-cells">
-              ${[0,1,2].map(i => `
-                <input type="checkbox" class="death-checkbox failure" data-ds="failure" data-idx="${i}" data-id="${c.id}" ${i < c.deathSaves.failures ? 'checked' : ''}>
-              `).join('')}
+            <div class="death-save-cells" data-save-block="failure" data-id="${c.id}">
+              ${[0,1,2].map(i => `<span class="death-cell ${i < c.deathSaves.failures ? 'filled failure' : ''}"></span>`).join('')}
             </div>
           </div>
         </div>
@@ -560,20 +567,27 @@ export function renderEncounter() {
     });
   });
 
-  // Спасброски
-  container.querySelectorAll('[data-ds]').forEach(el => {
-    el.addEventListener('change', (e) => {
+  // Спасброски: клик по блоку = +1
+  container.querySelectorAll('[data-save-block]').forEach(el => {
+    el.addEventListener('click', (e) => {
       e.stopPropagation();
       const c = enc.combatants.find(x => x.id === el.dataset.id);
       if (!c) return;
       ensureDeathSaves(c);
-      const idx = parseInt(el.dataset.idx, 10);
-      const key = el.dataset.ds === 'success' ? 'successes' : 'failures';
-      if (el.checked) {
-        c.deathSaves[key] = Math.max(c.deathSaves[key], idx + 1);
-      } else {
-        c.deathSaves[key] = Math.min(c.deathSaves[key], idx);
+      const type = el.dataset.saveBlock; // success | failure
+      // Проверка: не больше 2 за раунд
+      if (c.lastSaveRound === enc.round) {
+        return;
       }
+      if (type === 'success') {
+        if (c.deathSaves.successes >= 2) return;
+        c.deathSaves.successes += 1;
+      } else {
+        if (c.deathSaves.failures >= 2) return;
+        c.deathSaves.failures += 1;
+      }
+      c.lastSaveRound = enc.round;
+      // Проверка на стабилизацию / смерть
       if (c.deathSaves.successes >= 3) c.status = 'stable';
       if (c.deathSaves.failures >= 3) c.status = 'dead';
       persist();
@@ -589,6 +603,7 @@ export function renderEncounter() {
       if (!c) return;
       c.status = 'stable';
       c.deathSaves = { successes: 0, failures: 0 };
+      c.lastSaveRound = 0;
       persist();
       renderEncounter();
     });
@@ -722,7 +737,8 @@ export function confirmAddPlayers() {
         conditions: [],
         expanded: false,
         usedRound: { action: 0, bonus: 0, reaction: 0 },
-        deathSaves: { successes: 0, failures: 0 }
+        deathSaves: { successes: 0, failures: 0 },
+        lastSaveRound: 0
       });
     }
   });
