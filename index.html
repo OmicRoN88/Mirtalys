@@ -22,6 +22,7 @@
   <button data-modal="date">Дата</button>
   <button data-modal="missions">Миссии</button>
   <button data-modal="travel">Путешествие</button>
+  <button data-modal="encounter">Энкаунтер</button>
   <button data-modal="bank">Банк</button>
   <button data-modal="warehouse">Склад</button>
   <button data-modal="traders">Торговцы</button>
@@ -29,6 +30,26 @@
   <button data-modal="stoila">Стойла</button>
   <button data-modal="members">Состав</button>
   <button data-modal="personaj">Персонаж</button>
+</div>
+
+<!-- ================= МОДАЛЬНОЕ ОКНО: ЭНКАУНТЕР ================= -->
+<div class="modal-overlay" id="modal-encounter" style="display:none;">
+  <div class="modal">
+    <button class="modal-close" data-close>×</button>
+    <h2>Бой</h2>
+
+    <div class="encounter-header">
+      <div class="encounter-round" id="encounter-round"></div>
+      <div class="encounter-actions-top">
+        <button id="btn-add-players-enc" class="secondary small">Добавить игроков</button>
+        <button id="btn-add-enemy-enc" class="danger small">Добавить врага</button>
+        <button id="btn-next-turn" class="success-btn">Следующий ход</button>
+        <button id="btn-reset-enc" class="secondary small">Сброс</button>
+      </div>
+    </div>
+
+    <div id="encounter-list" class="encounter-list"></div>
+  </div>
 </div>
 
 <!-- ================= МОДАЛЬНОЕ ОКНО: СОСТАВ ================= -->
@@ -140,7 +161,6 @@
   <div class="modal">
     <button class="modal-close" data-close>×</button>
     <h2>Путешествие (Вестмарш)</h2>
-
     <div class="row">
       <div class="field">
         <label for="travel-region">Регион (местность)</label>
@@ -151,9 +171,7 @@
         <select id="travel-tier"></select>
       </div>
     </div>
-
     <button id="btn-trigger-travel" class="warn" style="margin-top: 8px;">Бросок события</button>
-
     <div id="travel-result" class="bank-expense-info" style="display:none; margin-top: 16px; text-align: left;"></div>
   </div>
 </div>
@@ -163,7 +181,6 @@
   <div class="modal">
     <button class="modal-close" data-close>×</button>
     <h2>Новая миссия</h2>
-
     <div class="row">
       <div class="field">
         <label for="mission-type">Задание</label>
@@ -177,12 +194,10 @@
         <input type="text" id="mission-issuer" placeholder="Фолен Берд. Тавернщик из Эргийна">
       </div>
     </div>
-
     <div class="field">
       <label for="mission-goal">Цель</label>
       <textarea id="mission-goal" placeholder="Разведать шахту..."></textarea>
     </div>
-
     <div class="row" style="margin-top: 12px;">
       <div class="field">
         <label for="mission-reward">Награда (ЗМ)</label>
@@ -197,7 +212,6 @@
         <input type="number" id="mission-hours" min="0" step="1">
       </div>
     </div>
-
     <button id="btn-add-mission" style="margin-top: 8px;">Добавить</button>
     <div class="error" id="mission-error"></div>
   </div>
