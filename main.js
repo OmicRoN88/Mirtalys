@@ -37,6 +37,10 @@ import {
   initPersonajHandlers
 } from './modules/personaj.js';
 
+import {
+  renderTravel, initTravelHandlers
+} from './modules/travel.js';
+
 /* ============================================================
    «МОСТИКИ»
    ============================================================ */
@@ -81,6 +85,7 @@ async function openModal(name) {
     await checkOverdueMissions();
   }
   if (name === 'stoila') { renderStoila(); showError('stoila-error', ''); }
+  if (name === 'travel') { renderTravel(); }
 }
 
 function closeModal(el) {
@@ -122,6 +127,7 @@ initTorgovcyHandlers();
 initMissionsHandlers();
 initStoilaHandlers();
 initPersonajHandlers();
+initTravelHandlers();
 
 /* ============================================================
    ПЕРВИЧНАЯ ОТРИСОВКА
