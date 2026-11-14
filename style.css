@@ -766,3 +766,121 @@ button.warn:hover { background: #d08030; }
   align-items: flex-end;
   gap: 2px;
 }
+
+/* ============================================================
+   ЭНКАУНТЕР
+   ============================================================ */
+
+.encounter-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 16px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--border);
+}
+
+.encounter-round {
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: var(--gold);
+}
+
+.encounter-actions-top {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.encounter-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.encounter-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 10px 14px;
+  transition: all 0.2s;
+}
+.encounter-row.player { border-left: 4px solid var(--success); }
+.encounter-row.enemy { border-left: 4px solid var(--error); }
+.encounter-row.dead { background: #1a1a22; opacity: 0.5; filter: grayscale(100%); }
+.encounter-row.active {
+  border: 2px solid var(--gold);
+  box-shadow: 0 0 10px rgba(255, 209, 102, 0.3);
+  background: rgba(255, 209, 102, 0.05);
+}
+
+.enc-initiative {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  min-width: 60px;
+}
+.enc-init-input {
+  width: 50px;
+  text-align: center;
+  font-weight: bold;
+  font-size: 1.1rem;
+  padding: 4px;
+}
+
+.enc-main { flex: 1; }
+
+.enc-head {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+  margin-bottom: 6px;
+}
+.enc-name { font-weight: 700; font-size: 1rem; }
+.enc-hp { font-size: 0.9rem; display: flex; align-items: center; gap: 4px; }
+.enc-hp-input { width: 50px; padding: 2px 4px; text-align: center; }
+.enc-ac { font-size: 0.9rem; color: var(--text-dim); }
+
+.enc-resources {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 6px;
+}
+.enc-resources label {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.85rem;
+  cursor: pointer;
+  user-select: none;
+}
+.enc-resources input[type="checkbox"] {
+  width: auto;
+  margin: 0;
+  cursor: pointer;
+}
+
+.enc-status {
+  font-size: 0.8rem;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 4px;
+  display: inline-block;
+  margin-bottom: 6px;
+}
+.enc-status.warning { background: rgba(255, 184, 107, 0.2); color: var(--warning); }
+.enc-status.danger { background: rgba(255, 92, 108, 0.2); color: var(--error); }
+
+.enc-actions {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
