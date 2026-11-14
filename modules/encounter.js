@@ -42,7 +42,6 @@ function rollD20() {
   return Math.floor(Math.random() * 20) + 1;
 }
 
-/* Сбрасывает ресурсы, если существо использовало их в прошлых раундах */
 function resetOldResources(c, currentRound) {
   if (!c.usedRound) c.usedRound = { action: 0, bonus: 0, reaction: 0 };
   if (c.usedRound.action < currentRound) c.action = false;
@@ -50,89 +49,119 @@ function resetOldResources(c, currentRound) {
   if (c.usedRound.reaction < currentRound) c.reaction = false;
 }
 
-/* Мини-диалог HP */
-function showHpDialog(combatant, onDone) {
-  const overlay = document.createElement('div');
-  overlay.className = 'dialog-overlay';
-  overlay.innerHTML = `
-    <div class="dialog">
-      <p>${escapeHtml(combatant.name)} — HP: ${combatant.hp}/${combatant.maxHp}${combatant.tempHp ? ` (+${combatant.tempHp})` : ''}</p>
-      <input type="number" id="hp-dialog-input" min="0" placeholder="Значение" style="margin-bottom: 16px;">
-      <div class="dialog-actions">
-        <button class="secondary" data-cancel>Отмена</button>
-        <button class="danger" data-damage>Урон</button>
-        <button class="success-btn" data-heal>Исцеление</button>
-      </div>
-    </div>
-  `;
-  document.body.appendChild(overlay);
-  const input = overlay.querySelector('#hp-dialog-input');
-  input.focus();
-  const close = () => overlay.remove();
-
-  overlay.querySelector('[data-cancel]').addEventListener('click', close);
-  overlay.addEventListener('click', e => { if (e.target === overlay) close(); });
-
-  overlay.querySelector('[data-damage]').addEventListener('click', () => {
-    const val = parseInt(input.value, 10);
-    if (isNaN(val) || val <= 0) return;
-    let dmg = val;
-    if (combatant.tempHp > 0) {
-      const absorbed = Math.min(combatant.tempHp, dmg);
-      combatant.tempHp -= absorbed;
-      dmg -= absorbed;
-    }
-    if (dmg > 0) combatant.hp -= dmg;
-    if (combatant.hp <= 0) { combatant.hp = 0; combatant.status = 'dead'; }
-    persist();
-    close();
-    onDone();
-  });
-
-  overlay.querySelector('[data-heal]').addEventListener('click', () => {
-    const val = parseInt(input.value, 10);
-    if (isNaN(val) || val <= 0) return;
-    combatant.hp = Math.min(combatant.maxHp, combatant.hp + val);
-    if (combatant.hp > 0 && combatant.status === 'dead') combatant.status = 'alive';
-    persist();
-    close();
-    onDone();
-  });
+function getHpColorClass(c) {
+  if (c.hp >= c.maxHp) return 'hp-full';
+  if (c.hp > c.maxHp * 0.5) return 'hp-mid';
+  return 'hp-low';
 }
 
-/* Мини-диалог КД */
-function showAcDialog(combatant, onDone) {
-  const overlay = document.createElement('div');
-  overlay.className = 'dialog-overlay';
-  overlay.innerHTML = `
-    <div class="dialog">
-      <p>${escapeHtml(combatant.name)} — КД: <b>${combatant.ac}</b></p>
-      <div style="display: flex; gap: 8px; justify-content: center; margin-bottom: 16px; flex-wrap: wrap;">
-        <button class="danger" data-ac="-2">−2 КД</button>
-        <button class="danger" data-ac="-1">−1 КД</button>
-        <button class="success-btn" data-ac="+1">+1 КД</button>
-        <button class="success-btn" data-ac="+2">+2 КД</button>
-      </div>
-      <div class="dialog-actions">
-        <button class="secondary" data-cancel>Закрыть</button>
-      </div>
-    </div>
-  `;
-  document.body.appendChild(overlay);
-  const close = () => overlay.remove();
+function ensureLogs() {
+  if (!state.encounter.logs) {
+    state.encounter.logs = {};
+  }
+}
 
-  overlay.querySelector('[data-cancel]').addEventListener('click', close);
-  overlay.addEventListener('click', e => { if (e.target === overlay) close(); });
+function getLogEntry(id) {
+  ensureLogs();
+  if (!state.encounter.logs[id]) {
+    state.encounter.logs[id] = { damage: 0, heal: 0, kills: 0 };
+  }
+  return state.encounter.logs[id];
+}
 
-  overlay.querySelectorAll('[data-ac]').forEach(btn => {
-    btn.addEventListener('click', () => {
-      const delta = parseInt(btn.dataset.ac, 10);
-      combatant.ac += delta;
-      persist();
-      close();
-      onDone();
-    });
+/* ============================================================
+   МОДАЛКА УРОНА / ИСЦЕЛЕНИЯ
+   ============================================================ */
+
+let damageMode = 'damage'; // 'damage' | 'heal'
+let damageSourceId = null;
+
+function openDamageModal(sourceId, mode) {
+  damageMode = mode;
+  damageSourceId = sourceId;
+  const modal = $('modal-damage');
+  const list = $('damage-targets-list');
+  const title = $('damage-modal-title');
+  const valInput = $('damage-value');
+  const errEl = $('damage-error');
+  if (!modal || !list) return;
+
+  if (title) title.textContent = mode === 'damage' ? 'Нанести урон' : 'Исцелить';
+  if (valInput) valInput.value = '1';
+  if (errEl) errEl.textContent = '';
+
+  const enc = state.encounter;
+  const sorted = [...enc.combatants].sort((a, b) => (b.initiative || 0) - (a.initiative || 0));
+
+  list.innerHTML = sorted.map(c => `
+    <label class="add-player-row ${isDead(c) ? 'already' : ''}">
+      <input type="checkbox" data-damage-target="${c.id}" ${isDead(c) ? 'disabled' : ''}>
+      <span>${escapeHtml(c.name)}</span>
+      <span class="hint">${c.hp}/${c.maxHp}${c.tempHp ? ` (+${c.tempHp})` : ''}</span>
+      ${isDead(c) ? '<span class="hint">(мертв)</span>' : ''}
+    </label>
+  `).join('');
+
+  modal.style.display = 'flex';
+}
+
+function confirmDamage() {
+  const list = $('damage-targets-list');
+  const valInput = $('damage-value');
+  const errEl = $('damage-error');
+  if (!list || !valInput) return;
+  if (errEl) errEl.textContent = '';
+
+  const val = parseInt(valInput.value, 10);
+  if (isNaN(val) || val <= 0) {
+    if (errEl) errEl.textContent = 'Введите значение больше 0';
+    return;
+  }
+
+  const enc = state.encounter;
+  const source = enc.combatants.find(c => c.id === damageSourceId);
+  const sourceLog = source ? getLogEntry(source.id) : null;
+
+  let applied = 0;
+  list.querySelectorAll('[data-damage-target]').forEach(el => {
+    if (!el.checked || el.disabled) return;
+    const target = enc.combatants.find(c => c.id === el.dataset.damageTarget);
+    if (!target) return;
+
+    if (damageMode === 'damage') {
+      let dmg = val;
+      if (target.tempHp > 0) {
+        const absorbed = Math.min(target.tempHp, dmg);
+        target.tempHp -= absorbed;
+        dmg -= absorbed;
+      }
+      if (dmg > 0) target.hp -= dmg;
+      if (target.hp <= 0) {
+        target.hp = 0;
+        if (target.status !== 'dead') {
+          target.status = 'dead';
+          if (sourceLog) sourceLog.kills += 1;
+        }
+      }
+      if (sourceLog) sourceLog.damage += val;
+    } else {
+      const before = target.hp;
+      target.hp = Math.min(target.maxHp, target.hp + val);
+      const healed = target.hp - before;
+      if (target.hp > 0 && target.status === 'dead') target.status = 'alive';
+      if (sourceLog) sourceLog.heal += healed;
+    }
+    applied++;
   });
+
+  if (!applied) {
+    if (errEl) errEl.textContent = 'Выберите хотя бы одну цель';
+    return;
+  }
+
+  persist();
+  $('modal-damage').style.display = 'none';
+  renderEncounter();
 }
 
 /* ============================================================
@@ -143,11 +172,10 @@ export function renderEncounter() {
   const container = $('encounter-list');
   const roundEl = $('encounter-round');
   const nextBtn = $('btn-next-turn');
+  const finishBtn = $('btn-finish-enc');
   if (!container) return;
 
   const enc = state.encounter;
-
-  // Автоматический сброс старых ресурсов перед отрисовкой
   enc.combatants.forEach(c => resetOldResources(c, enc.round));
 
   if (nextBtn) {
@@ -157,6 +185,16 @@ export function renderEncounter() {
     } else {
       nextBtn.textContent = 'Начать бой';
       nextBtn.className = 'warn';
+    }
+  }
+
+  if (finishBtn) {
+    if (enc.finished) {
+      finishBtn.textContent = 'Логи';
+      finishBtn.className = 'secondary small';
+    } else {
+      finishBtn.textContent = 'Закончить';
+      finishBtn.className = 'secondary small';
     }
   }
 
@@ -178,6 +216,8 @@ export function renderEncounter() {
     const isActive = c.id === activeId;
     const dead = isDead(c);
     const expanded = c.expanded === true;
+    const hpClass = getHpColorClass(c);
+    const lowHp = c.hp > 0 && c.hp <= c.maxHp * 0.5;
 
     let rowClass = 'encounter-row';
     rowClass += c.isEnemy ? ' enemy' : ' player';
@@ -213,7 +253,9 @@ export function renderEncounter() {
         </div>
       ` : ''}
       <div class="enc-actions">
-        <button class="small secondary" data-remove="${c.id}">Удалить из боя</button>
+        <button class="small danger" data-damage="${c.id}">Урон</button>
+        <button class="small success-btn" data-heal="${c.id}">Исцеление</button>
+        <button class="small secondary" data-remove="${c.id}" style="margin-left: auto;">Удалить из боя</button>
       </div>
     ` : '';
 
@@ -228,8 +270,9 @@ export function renderEncounter() {
         <div class="enc-head" data-toggle="${c.id}" style="cursor: pointer;">
           <span class="enc-name">${escapeHtml(c.name)}</span>
           <span class="enc-stats">
-            <b class="enc-hp-clickable" data-hp-click="${c.id}">HP: ${c.hp}${c.tempHp > 0 ? ` <span style="color: var(--warning);">(+${c.tempHp})</span>` : ''} / ${c.maxHp}</b>
-            <b class="enc-ac-clickable" data-ac-click="${c.id}">КД: ${c.ac}</b>
+            <b class="${hpClass}">HP: ${c.hp}${c.tempHp > 0 ? ` <span style="color: var(--warning);">(+${c.tempHp})</span>` : ''} / ${c.maxHp}</b>
+            <b>КД: ${c.ac}</b>
+            ${lowHp ? '<span class="enc-bloodied">Окровавлен</span>' : ''}
           </span>
           <span class="enc-arrow">${expanded ? '▲' : '▼'}</span>
         </div>
@@ -250,24 +293,6 @@ export function renderEncounter() {
       c.expanded = !c.expanded;
       persist();
       renderEncounter();
-    });
-  });
-
-  container.querySelectorAll('[data-hp-click]').forEach(el => {
-    el.addEventListener('click', (e) => {
-      e.stopPropagation();
-      const c = enc.combatants.find(x => x.id === el.dataset.hpClick);
-      if (!c) return;
-      showHpDialog(c, renderEncounter);
-    });
-  });
-
-  container.querySelectorAll('[data-ac-click]').forEach(el => {
-    el.addEventListener('click', (e) => {
-      e.stopPropagation();
-      const c = enc.combatants.find(x => x.id === el.dataset.acClick);
-      if (!c) return;
-      showAcDialog(c, renderEncounter);
     });
   });
 
@@ -323,6 +348,20 @@ export function renderEncounter() {
     });
   });
 
+  container.querySelectorAll('[data-damage]').forEach(el => {
+    el.addEventListener('click', (e) => {
+      e.stopPropagation();
+      openDamageModal(el.dataset.damage, 'damage');
+    });
+  });
+
+  container.querySelectorAll('[data-heal]').forEach(el => {
+    el.addEventListener('click', (e) => {
+      e.stopPropagation();
+      openDamageModal(el.dataset.heal, 'heal');
+    });
+  });
+
   container.querySelectorAll('[data-remove]').forEach(el => {
     el.addEventListener('click', async (e) => {
       e.stopPropagation();
@@ -346,19 +385,16 @@ export function nextTurn() {
   const enc = state.encounter;
   if (!enc.combatants.length) return;
 
-  // Сворачиваем все карточки
   enc.combatants.forEach(c => { c.expanded = false; });
 
   const sorted = [...enc.combatants].sort((a, b) => (b.initiative || 0) - (a.initiative || 0));
 
   if (!enc.active) {
-    // Начинаем бой
     enc.active = true;
     enc.round = 1;
     const first = sorted.findIndex(c => !mustSkipTurn(c));
     enc.turnIndex = first >= 0 ? first : 0;
   } else {
-    // Ищем следующего
     let nextIdx = enc.turnIndex + 1;
     let guard = 0;
     while (guard < 1000) {
@@ -377,11 +413,9 @@ export function nextTurn() {
     }
   }
 
-  // Раскрываем активную карточку
   const current = sorted[enc.turnIndex];
   if (current) current.expanded = true;
 
-  // Сбрасываем старые ресурсы
   enc.combatants.forEach(c => resetOldResources(c, enc.round));
 
   persist();
@@ -514,14 +548,64 @@ export function confirmAddEnemy() {
 }
 
 /* ============================================================
-   СБРОС
+   ЗАКОНЧИТЬ БОЙ / ЛОГИ / СБРОС
    ============================================================ */
 
+export function finishEncounter() {
+  const enc = state.encounter;
+  if (enc.finished) {
+    openLogsModal();
+  } else {
+    enc.finished = true;
+    persist();
+    renderEncounter();
+    openLogsModal();
+  }
+}
+
+function openLogsModal() {
+  const modal = $('modal-logs');
+  const content = $('logs-content');
+  if (!modal || !content) return;
+
+  const enc = state.encounter;
+  ensureLogs();
+
+  const rows = enc.combatants.map(c => {
+    const log = getLogEntry(c.id);
+    return `<tr>
+      <td>${escapeHtml(c.name)}</td>
+      <td>${log.damage}</td>
+      <td>${log.heal}</td>
+      <td>${log.kills}</td>
+    </tr>`;
+  }).join('');
+
+  content.innerHTML = enc.combatants.length ? `
+    <table class="logs-table">
+      <thead>
+        <tr><th>Существо</th><th>Нанесено урона</th><th>Исцелено</th><th>Убийств</th></tr>
+      </thead>
+      <tbody>${rows}</tbody>
+    </table>
+  ` : '<div class="empty">Нет участников</div>';
+
+  modal.style.display = 'flex';
+}
+
 export async function resetEncounter() {
-  const ok = await showConfirm('Завершить бой и очистить список?', 'Очистить', 'Отмена');
+  const ok = await showConfirm('Сбросить бой полностью? История, список участников и логи будут очищены.', 'Сбросить', 'Отмена');
   if (!ok) return;
-  state.encounter = { active: false, round: 1, turnIndex: 0, combatants: [] };
+  state.encounter = {
+    active: false,
+    round: 1,
+    turnIndex: 0,
+    combatants: [],
+    finished: false,
+    logs: {}
+  };
   persist();
+  $('modal-logs').style.display = 'none';
   renderEncounter();
 }
 
@@ -539,8 +623,8 @@ export function initEncounterHandlers() {
   const btnNext = $('btn-next-turn');
   if (btnNext) btnNext.addEventListener('click', nextTurn);
 
-  const btnReset = $('btn-reset-enc');
-  if (btnReset) btnReset.addEventListener('click', resetEncounter);
+  const btnFinish = $('btn-finish-enc');
+  if (btnFinish) btnFinish.addEventListener('click', finishEncounter);
 
   const btnConfirmPlayers = $('btn-confirm-add-players');
   if (btnConfirmPlayers) btnConfirmPlayers.addEventListener('click', confirmAddPlayers);
@@ -554,5 +638,21 @@ export function initEncounterHandlers() {
   const btnCancelEnemy = $('btn-cancel-add-enemy');
   if (btnCancelEnemy) btnCancelEnemy.addEventListener('click', () => {
     $('modal-add-enemy').style.display = 'none';
+  });
+
+  // Модалка урона/исцеления
+  const btnConfirmDamage = $('btn-confirm-damage');
+  if (btnConfirmDamage) btnConfirmDamage.addEventListener('click', confirmDamage);
+  const btnCancelDamage = $('btn-cancel-damage');
+  if (btnCancelDamage) btnCancelDamage.addEventListener('click', () => {
+    $('modal-damage').style.display = 'none';
+  });
+
+  // Модалка логов
+  const btnResetFromLogs = $('btn-reset-from-logs');
+  if (btnResetFromLogs) btnResetFromLogs.addEventListener('click', resetEncounter);
+  const btnCloseLogs = $('btn-close-logs');
+  if (btnCloseLogs) btnCloseLogs.addEventListener('click', () => {
+    $('modal-logs').style.display = 'none';
   });
 }
