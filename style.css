@@ -790,10 +790,15 @@ button.warn:hover { background: #d08030; }
 .encounter-row.player { border-left: 4px solid var(--success); }
 .encounter-row.enemy { border-left: 4px solid var(--error); }
 .encounter-row.dead { background: #1a1a22; opacity: 0.5; filter: grayscale(100%); }
-.encounter-row.active {
-  border: 2px solid var(--gold);
-  box-shadow: 0 0 10px rgba(255, 209, 102, 0.3);
-  background: rgba(255, 209, 102, 0.05);
+.encounter-row.active.player {
+  border: 2px solid var(--success);
+  box-shadow: 0 0 10px rgba(74, 222, 128, 0.3);
+  background: rgba(74, 222, 128, 0.05);
+}
+.encounter-row.active.enemy {
+  border: 2px solid var(--error);
+  box-shadow: 0 0 10px rgba(255, 92, 108, 0.3);
+  background: rgba(255, 92, 108, 0.05);
 }
 
 .enc-initiative {
@@ -833,20 +838,21 @@ button.warn:hover { background: #d08030; }
 }
 .enc-stats b {
   font-size: 1.1rem;
-  color: var(--text);
   font-weight: 700;
 }
-.enc-hp-clickable,
-.enc-ac-clickable {
-  cursor: pointer;
-  padding: 2px 6px;
+.enc-stats b.hp-full { color: var(--success); }
+.enc-stats b.hp-mid { color: var(--warning); }
+.enc-stats b.hp-low { color: var(--error); }
+
+.enc-bloodied {
+  font-size: 0.72rem;
+  font-weight: 600;
+  padding: 2px 8px;
   border-radius: 4px;
-  transition: background 0.2s;
+  background: rgba(255, 92, 108, 0.2);
+  color: var(--error);
 }
-.enc-hp-clickable:hover,
-.enc-ac-clickable:hover {
-  background: rgba(124,92,255,0.15);
-}
+
 .enc-arrow {
   margin-left: auto;
   color: var(--text-dim);
@@ -924,7 +930,32 @@ button.warn:hover { background: #d08030; }
   gap: 6px;
   flex-wrap: wrap;
   margin-top: 8px;
+  align-items: center;
 }
+
+/* ============================================================
+   ЛОГИ БОЯ
+   ============================================================ */
+
+.logs-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.88rem;
+}
+.logs-table th,
+.logs-table td {
+  padding: 8px 10px;
+  text-align: left;
+  border-bottom: 1px solid var(--border);
+}
+.logs-table th {
+  color: var(--text-dim);
+  text-transform: uppercase;
+  font-size: 0.75rem;
+  letter-spacing: 0.4px;
+}
+.logs-table td { color: var(--text); }
+.logs-table tr:last-child td { border-bottom: none; }
 
 /* ============================================================
    ДИАЛОГИ
