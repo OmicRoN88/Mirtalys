@@ -41,10 +41,9 @@ function isUnconscious(c) { return c.status === 'unconscious'; }
 function isStable(c) { return c.status === 'stable'; }
 
 function isSurprised(c) {
-  // Раунд неожиданности: только раунд 1
   const enc = state.encounter;
   if (enc.round !== 1) return false;
-  if (!enc.surpriseSide) return false; // 'players' | 'enemies'
+  if (!enc.surpriseSide) return false;
   if (enc.surpriseSide === 'players' && !c.isEnemy) return true;
   if (enc.surpriseSide === 'enemies' && c.isEnemy) return true;
   return false;
@@ -96,8 +95,8 @@ function ensureDeathSaves(c) {
    СОРТИРОВКА
    ============================================================ */
 
-// Сортировка: по initiative убыв., при равенстве — по orderIndex возр.
-function sortCombatants(arr) {
+// Основная сортировка: по initiative (убывание), при равенстве — по orderIndex.
+function sortByInitiative(arr) {
   return [...arr].sort((a, b) => {
     const ia = a.initiative || 0;
     const ib = b.initiative || 0;
@@ -106,6 +105,24 @@ function sortCombatants(arr) {
     const ob = typeof b.orderIndex === 'number' ? b.orderIndex : 0;
     return oa - ob;
   });
+}
+
+// Сортировка с учётом неожиданности в раунде 1:
+// если surpriseSide = 'players' — сначала игроки, затем враги;
+// если surpriseSide = 'enemies' — сначала враги, затем игроки.
+function sortCombatants(arr) {
+  const enc = state.encounter;
+  const base = sortByInitiative(arr);
+  if (enc.round !== 1 || !enc.surpriseSide) return base;
+
+  const activeGroup = [];
+  const surprisedGroup = [];
+  base.forEach(c => {
+    const isSurprisedChar = isSurprised(c);
+    if (isSurprisedChar) surprisedGroup.push(c);
+    else activeGroup.push(c);
+  });
+  return [...activeGroup, ...surprisedGroup];
 }
 
 /* ============================================================
@@ -326,7 +343,7 @@ function openDamageModal(sourceId, mode) {
   const source = enc.combatants.find(c => c.id === sourceId);
   const sourceIsEnemy = source ? source.isEnemy : false;
 
-  const sorted = sortCombatants(enc.combatants);
+  const sorted = sortByInitiative(enc.combatants);
 
   const ordered = sorted.sort((a, b) => {
     if (sourceIsEnemy) {
@@ -493,7 +510,6 @@ export function renderEncounter() {
       ? `<label class="concentration-label"><input type="checkbox" data-res="concentration" data-id="${c.id}" ${c.concentration ? 'checked' : ''}> Концентрация</label>`
       : '';
 
-    // Найдём индексы для кнопок вверх/вниз (в отсортированном массиве)
     const sortedIdx = sorted.findIndex(x => x.id === c.id);
     const upDisabled = sortedIdx <= 0;
     const downDisabled = sortedIdx >= sorted.length - 1;
@@ -547,11 +563,11 @@ export function renderEncounter() {
     row.innerHTML = `
       <div class="enc-main">
         <div class="enc-head" data-toggle="${c.id}" style="cursor: pointer;">
+          <span class="enc-initiative-inline">
+            <input type="number" class="enc-init-input" data-init="${c.id}" value="${c.initiative || ''}" placeholder="Иниц." onclick="event.stopPropagation()">
+          </span>
           <span class="enc-name">${escapeHtml(c.name)}</span>
           <span class="enc-stats">
-            <span class="enc-initiative-inline">
-              <input type="number" class="enc-init-input" data-init="${c.id}" value="${c.initiative || ''}" placeholder="Иниц." onclick="event.stopPropagation()">
-            </span>
             <b class="enc-hp-clickable ${hpClass}" data-hp-click="${c.id}">HP: ${c.hp}/${c.maxHp}${thpHtml}</b>
             <b class="enc-ac-clickable" data-ac-click="${c.id}">КД: ${c.ac}</b>
             ${passiveHtml}
@@ -609,7 +625,6 @@ export function renderEncounter() {
     });
   });
 
-  // Кнопки «вверх/вниз»
   container.querySelectorAll('[data-move-up]').forEach(el => {
     el.addEventListener('click', (e) => {
       e.stopPropagation();
@@ -745,35 +760,16 @@ function moveCombatant(id, direction) {
   const a = sorted[idx];
   const b = sorted[newIdx];
 
-  // Меняем orderIndex
   const temp = a.orderIndex;
   a.orderIndex = b.orderIndex;
   b.orderIndex = temp;
 
-  // Если инициативы равны — меняем только orderIndex, всё ок.
-  // Если инициативы разные — orderIndex не поможет (сортировка по initiative главнее).
-  // Поэтому нужно также поменять местами сами объекты в массиве combatants,
-  // а если инициативы разные — присвоить им одинаковую? Нет, нельзя ломать инициативу.
-  // Тогда: если инициативы разные, принудительно меняем их местами в массиве
-  // и пересчитываем orderIndex так, чтобы они шли в нужном порядке при сортировке.
   if ((a.initiative || 0) !== (b.initiative || 0)) {
-    // Сохраняем значения инициативы
-    const ia = a.initiative;
-    const ib = b.initiative;
-    // Меняем местами в массиве combatants
     const arrA = enc.combatants.indexOf(a);
     const arrB = enc.combatants.indexOf(b);
     if (arrA !== -1 && arrB !== -1) {
       [enc.combatants[arrA], enc.combatants[arrB]] = [enc.combatants[arrB], enc.combatants[arrA]];
     }
-    // Чтобы сортировка не вернула их обратно, нужно чтобы orderIndex
-    // компенсировал разницу инициатив. Но это ломает вторичный ключ.
-    // Проще: при разных инициативах кнопки не работают (или работают только
-    // для смены мест в рамках одинаковой инициативы). По ТЗ Мастера — он хочет
-    // двигать любые карточки. Тогда единственный способ — отвязать порядок
-    // от инициативы полностью. Но Мастер настаивает, что сортировка по
-    // инициативе главная. Значит, кнопки работают только внутри группы
-    // с одинаковой инициативой. Это ограничение.
   }
 
   persist();
@@ -840,7 +836,7 @@ function openStartBattleModal() {
 
 function startBattle(surpriseSide) {
   const enc = state.encounter;
-  enc.surpriseSide = surpriseSide; // null | 'players' | 'enemies'
+  enc.surpriseSide = surpriseSide;
   $('modal-start-battle').style.display = 'none';
   nextTurn();
 }
@@ -1056,7 +1052,6 @@ export function initEncounterHandlers() {
   if (btnNext) btnNext.addEventListener('click', () => {
     const enc = state.encounter;
     if (!enc.active) {
-      // Открываем модалку «Начать бой»
       openStartBattleModal();
     } else {
       nextTurn();
@@ -1094,7 +1089,6 @@ export function initEncounterHandlers() {
     $('modal-logs').style.display = 'none';
   });
 
-  // Модалка «Начать бой»
   const btnNormal = $('btn-start-normal');
   if (btnNormal) btnNormal.addEventListener('click', () => startBattle(null));
   const btnSurprisePlayers = $('btn-start-surprise-players');
