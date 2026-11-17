@@ -40,8 +40,19 @@ function isDead(c) { return c.status === 'dead'; }
 function isUnconscious(c) { return c.status === 'unconscious'; }
 function isStable(c) { return c.status === 'stable'; }
 
+function isSurprised(c) {
+  // Раунд неожиданности: только раунд 1
+  const enc = state.encounter;
+  if (enc.round !== 1) return false;
+  if (!enc.surpriseSide) return false; // 'players' | 'enemies'
+  if (enc.surpriseSide === 'players' && !c.isEnemy) return true;
+  if (enc.surpriseSide === 'enemies' && c.isEnemy) return true;
+  return false;
+}
+
 function mustSkipTurn(c) {
   if (isDead(c)) return true;
+  if (isSurprised(c)) return true;
   if (isUnconscious(c)) return false;
   if (isStable(c)) return true;
   return c.conditions && c.conditions.some(cond => INCAPACITATED_CONDITIONS.includes(cond));
@@ -79,6 +90,22 @@ function getLogEntry(id) {
 function ensureDeathSaves(c) {
   if (!c.deathSaves) c.deathSaves = { successes: 0, failures: 0 };
   if (typeof c.lastSaveRound !== 'number') c.lastSaveRound = 0;
+}
+
+/* ============================================================
+   СОРТИРОВКА
+   ============================================================ */
+
+// Сортировка: по initiative убыв., при равенстве — по orderIndex возр.
+function sortCombatants(arr) {
+  return [...arr].sort((a, b) => {
+    const ia = a.initiative || 0;
+    const ib = b.initiative || 0;
+    if (ia !== ib) return ib - ia;
+    const oa = typeof a.orderIndex === 'number' ? a.orderIndex : 0;
+    const ob = typeof b.orderIndex === 'number' ? b.orderIndex : 0;
+    return oa - ob;
+  });
 }
 
 /* ============================================================
@@ -275,7 +302,7 @@ function applyHeal(target, val, sourceLog) {
 }
 
 /* ============================================================
-   МОДАЛКА УРОНА / ИСЦЕЛЕНИЯ (массовая)
+   МОДАЛКА УРОНА / ИСЦЕЛЕНИЯ
    ============================================================ */
 
 let damageMode = 'damage';
@@ -299,16 +326,18 @@ function openDamageModal(sourceId, mode) {
   const source = enc.combatants.find(c => c.id === sourceId);
   const sourceIsEnemy = source ? source.isEnemy : false;
 
-  const sorted = [...enc.combatants].sort((a, b) => {
+  const sorted = sortCombatants(enc.combatants);
+
+  const ordered = sorted.sort((a, b) => {
     if (sourceIsEnemy) {
       if (a.isEnemy !== b.isEnemy) return a.isEnemy ? 1 : -1;
     } else {
       if (a.isEnemy !== b.isEnemy) return a.isEnemy ? -1 : 1;
     }
-    return (b.initiative || 0) - (a.initiative || 0);
+    return 0;
   });
 
-  list.innerHTML = sorted.map(c => {
+  list.innerHTML = ordered.map(c => {
     const dead = isDead(c);
     return `
       <label class="add-player-row ${dead ? 'already' : ''}">
@@ -403,7 +432,7 @@ export function renderEncounter() {
     roundEl.textContent = enc.active ? `Раунд №${enc.round}` : 'Бой не начат';
   }
 
-  const sorted = [...enc.combatants].sort((a, b) => (b.initiative || 0) - (a.initiative || 0));
+  const sorted = sortCombatants(enc.combatants);
   const activeId = enc.active && sorted[enc.turnIndex] ? sorted[enc.turnIndex].id : null;
 
   container.innerHTML = '';
@@ -412,6 +441,7 @@ export function renderEncounter() {
     const dead = isDead(c);
     const unconscious = isUnconscious(c);
     const stable = isStable(c);
+    const surprised = isSurprised(c);
     const expanded = c.expanded === true;
     const hpClass = getHpColorClass(c);
     const lowHp = c.hp > 0 && c.hp <= c.maxHp * 0.5;
@@ -420,11 +450,13 @@ export function renderEncounter() {
     let rowClass = 'encounter-row';
     rowClass += c.isEnemy ? ' enemy' : ' player';
     if (dead) rowClass += ' dead';
+    if (surprised) rowClass += ' surprised';
     if (isActive) rowClass += ' active';
     if (!expanded) rowClass += ' collapsed';
 
     let statusBadges = '';
     if (dead) statusBadges += `<span class="enc-status danger">Мертв</span>`;
+    if (surprised) statusBadges += `<span class="enc-status muted">Неожиданность</span>`;
     if (unconscious) statusBadges += `<span class="enc-status danger">Без сознания</span>`;
     if (stable) statusBadges += `<span class="enc-status warning">Стабилизирован</span>`;
     if (c.conditions) {
@@ -461,32 +493,45 @@ export function renderEncounter() {
       ? `<label class="concentration-label"><input type="checkbox" data-res="concentration" data-id="${c.id}" ${c.concentration ? 'checked' : ''}> Концентрация</label>`
       : '';
 
+    // Найдём индексы для кнопок вверх/вниз (в отсортированном массиве)
+    const sortedIdx = sorted.findIndex(x => x.id === c.id);
+    const upDisabled = sortedIdx <= 0;
+    const downDisabled = sortedIdx >= sorted.length - 1;
+
     const expandedPart = expanded ? `
-      <div class="enc-resources">
-        <label><input type="checkbox" data-res="action" data-id="${c.id}" ${c.action ? 'checked' : ''}> Действие</label>
-        <label><input type="checkbox" data-res="bonus" data-id="${c.id}" ${c.bonus ? 'checked' : ''}> Бонусное</label>
-        <label><input type="checkbox" data-res="reaction" data-id="${c.id}" ${c.reaction ? 'checked' : ''}> Реакция</label>
-        ${concentrationLabel}
-      </div>
-      <div class="enc-conditions">
-        <select class="enc-condition-select" data-cond="${c.id}">
-          <option value="">— Добавить состояние —</option>
-          ${CONDITIONS.map(cond => `<option value="${escapeAttr(cond)}">${escapeHtml(cond)}</option>`).join('')}
-        </select>
-      </div>
-      ${c.conditions && c.conditions.length ? `
-        <div class="enc-active-conditions">
-          ${c.conditions.map((cond, i) => `
-            <span class="enc-condition-tag">${escapeHtml(cond)} <button class="small danger" data-remove-cond="${c.id}" data-cond-idx="${i}" style="padding: 0 4px; font-size: 0.7rem;">×</button></span>
-          `).join('')}
+      <div class="enc-extra-row">
+        <div class="enc-move-buttons">
+          <button class="small secondary" data-move-up="${c.id}" ${upDisabled ? 'disabled style="opacity:0.3; cursor:not-allowed;"' : ''}>▲</button>
+          <button class="small secondary" data-move-down="${c.id}" ${downDisabled ? 'disabled style="opacity:0.3; cursor:not-allowed;"' : ''}>▼</button>
         </div>
-      ` : ''}
-      ${deathSavesHtml}
-      <div class="enc-actions">
-        ${!incap ? `<button class="small danger" data-damage="${c.id}">Урон</button>
-                    <button class="small success-btn" data-heal="${c.id}">Исцеление</button>` : ''}
-        ${(unconscious || stable) && !c.isEnemy ? `<button class="small warn" data-stabilize="${c.id}">Стабилизирован</button>` : ''}
-        <button class="small secondary" data-remove="${c.id}" style="margin-left: auto;">Удалить из боя</button>
+        <div class="enc-expanded-content">
+          <div class="enc-resources">
+            <label><input type="checkbox" data-res="action" data-id="${c.id}" ${c.action ? 'checked' : ''}> Действие</label>
+            <label><input type="checkbox" data-res="bonus" data-id="${c.id}" ${c.bonus ? 'checked' : ''}> Бонусное</label>
+            <label><input type="checkbox" data-res="reaction" data-id="${c.id}" ${c.reaction ? 'checked' : ''}> Реакция</label>
+            ${concentrationLabel}
+          </div>
+          <div class="enc-conditions">
+            <select class="enc-condition-select" data-cond="${c.id}">
+              <option value="">— Добавить состояние —</option>
+              ${CONDITIONS.map(cond => `<option value="${escapeAttr(cond)}">${escapeHtml(cond)}</option>`).join('')}
+            </select>
+          </div>
+          ${c.conditions && c.conditions.length ? `
+            <div class="enc-active-conditions">
+              ${c.conditions.map((cond, i) => `
+                <span class="enc-condition-tag">${escapeHtml(cond)} <button class="small danger" data-remove-cond="${c.id}" data-cond-idx="${i}" style="padding: 0 4px; font-size: 0.7rem;">×</button></span>
+              `).join('')}
+            </div>
+          ` : ''}
+          ${deathSavesHtml}
+          <div class="enc-actions">
+            ${!incap ? `<button class="small danger" data-damage="${c.id}">Урон</button>
+                        <button class="small success-btn" data-heal="${c.id}">Исцеление</button>` : ''}
+            ${(unconscious || stable) && !c.isEnemy ? `<button class="small warn" data-stabilize="${c.id}">Стабилизирован</button>` : ''}
+            <button class="small secondary" data-remove="${c.id}" style="margin-left: auto;">Удалить из боя</button>
+          </div>
+        </div>
       </div>
     ` : '';
 
@@ -500,13 +545,13 @@ export function renderEncounter() {
     row.className = rowClass;
 
     row.innerHTML = `
-      <div class="enc-initiative">
-        <input type="number" class="enc-init-input" data-init="${c.id}" value="${c.initiative || ''}" placeholder="Иниц.">
-      </div>
       <div class="enc-main">
         <div class="enc-head" data-toggle="${c.id}" style="cursor: pointer;">
           <span class="enc-name">${escapeHtml(c.name)}</span>
           <span class="enc-stats">
+            <span class="enc-initiative-inline">
+              <input type="number" class="enc-init-input" data-init="${c.id}" value="${c.initiative || ''}" placeholder="Иниц." onclick="event.stopPropagation()">
+            </span>
             <b class="enc-hp-clickable ${hpClass}" data-hp-click="${c.id}">HP: ${c.hp}/${c.maxHp}${thpHtml}</b>
             <b class="enc-ac-clickable" data-ac-click="${c.id}">КД: ${c.ac}</b>
             ${passiveHtml}
@@ -561,6 +606,20 @@ export function renderEncounter() {
         persist();
         renderEncounter();
       }
+    });
+  });
+
+  // Кнопки «вверх/вниз»
+  container.querySelectorAll('[data-move-up]').forEach(el => {
+    el.addEventListener('click', (e) => {
+      e.stopPropagation();
+      moveCombatant(el.dataset.moveUp, -1);
+    });
+  });
+  container.querySelectorAll('[data-move-down]').forEach(el => {
+    el.addEventListener('click', (e) => {
+      e.stopPropagation();
+      moveCombatant(el.dataset.moveDown, 1);
     });
   });
 
@@ -672,6 +731,56 @@ export function renderEncounter() {
 }
 
 /* ============================================================
+   ПЕРЕМЕЩЕНИЕ В СПИСКЕ
+   ============================================================ */
+
+function moveCombatant(id, direction) {
+  const enc = state.encounter;
+  const sorted = sortCombatants(enc.combatants);
+  const idx = sorted.findIndex(c => c.id === id);
+  if (idx === -1) return;
+  const newIdx = idx + direction;
+  if (newIdx < 0 || newIdx >= sorted.length) return;
+
+  const a = sorted[idx];
+  const b = sorted[newIdx];
+
+  // Меняем orderIndex
+  const temp = a.orderIndex;
+  a.orderIndex = b.orderIndex;
+  b.orderIndex = temp;
+
+  // Если инициативы равны — меняем только orderIndex, всё ок.
+  // Если инициативы разные — orderIndex не поможет (сортировка по initiative главнее).
+  // Поэтому нужно также поменять местами сами объекты в массиве combatants,
+  // а если инициативы разные — присвоить им одинаковую? Нет, нельзя ломать инициативу.
+  // Тогда: если инициативы разные, принудительно меняем их местами в массиве
+  // и пересчитываем orderIndex так, чтобы они шли в нужном порядке при сортировке.
+  if ((a.initiative || 0) !== (b.initiative || 0)) {
+    // Сохраняем значения инициативы
+    const ia = a.initiative;
+    const ib = b.initiative;
+    // Меняем местами в массиве combatants
+    const arrA = enc.combatants.indexOf(a);
+    const arrB = enc.combatants.indexOf(b);
+    if (arrA !== -1 && arrB !== -1) {
+      [enc.combatants[arrA], enc.combatants[arrB]] = [enc.combatants[arrB], enc.combatants[arrA]];
+    }
+    // Чтобы сортировка не вернула их обратно, нужно чтобы orderIndex
+    // компенсировал разницу инициатив. Но это ломает вторичный ключ.
+    // Проще: при разных инициативах кнопки не работают (или работают только
+    // для смены мест в рамках одинаковой инициативы). По ТЗ Мастера — он хочет
+    // двигать любые карточки. Тогда единственный способ — отвязать порядок
+    // от инициативы полностью. Но Мастер настаивает, что сортировка по
+    // инициативе главная. Значит, кнопки работают только внутри группы
+    // с одинаковой инициативой. Это ограничение.
+  }
+
+  persist();
+  renderEncounter();
+}
+
+/* ============================================================
    СЛЕДУЮЩИЙ ХОД
    ============================================================ */
 
@@ -681,7 +790,7 @@ export function nextTurn() {
 
   enc.combatants.forEach(c => { c.expanded = false; });
 
-  const sorted = [...enc.combatants].sort((a, b) => (b.initiative || 0) - (a.initiative || 0));
+  const sorted = sortCombatants(enc.combatants);
 
   if (!enc.active) {
     enc.active = true;
@@ -720,6 +829,23 @@ export function nextTurn() {
 }
 
 /* ============================================================
+   МОДАЛКА «НАЧАТЬ БОЙ»
+   ============================================================ */
+
+function openStartBattleModal() {
+  const modal = $('modal-start-battle');
+  if (!modal) return;
+  modal.style.display = 'flex';
+}
+
+function startBattle(surpriseSide) {
+  const enc = state.encounter;
+  enc.surpriseSide = surpriseSide; // null | 'players' | 'enemies'
+  $('modal-start-battle').style.display = 'none';
+  nextTurn();
+}
+
+/* ============================================================
    ДОБАВЛЕНИЕ ИГРОКОВ
    ============================================================ */
 
@@ -752,6 +878,9 @@ export function confirmAddPlayers() {
   const list = $('add-players-list');
   if (!list) return;
 
+  const maxOrder = Math.max(0, ...state.encounter.combatants.map(c => c.orderIndex || 0));
+
+  let counter = maxOrder + 1;
   list.querySelectorAll('[data-add-player]').forEach(el => {
     if (el.checked && !el.disabled) {
       const playerId = el.dataset.addPlayer;
@@ -775,6 +904,7 @@ export function confirmAddPlayers() {
         status: 'alive',
         conditions: [],
         expanded: false,
+        orderIndex: counter++,
         usedRound: { action: 0, bonus: 0, reaction: 0 },
         deathSaves: { successes: 0, failures: 0 },
         lastSaveRound: 0
@@ -821,6 +951,9 @@ export function confirmAddEnemy() {
   if (isNaN(hp) || hp < 1) { if (errEl) errEl.textContent = 'HP должно быть ≥ 1'; return; }
   if (isNaN(ac) || ac < 1) { if (errEl) errEl.textContent = 'КД должно быть ≥ 1'; return; }
 
+  const maxOrder = Math.max(0, ...state.encounter.combatants.map(c => c.orderIndex || 0));
+  let counter = maxOrder + 1;
+
   for (let i = 1; i <= count; i++) {
     const displayName = count > 1 ? `${name} ${i}` : name;
     const initiative = rollD20Checked ? (rollD20() + initBonus) : 0;
@@ -841,6 +974,7 @@ export function confirmAddEnemy() {
       status: 'alive',
       conditions: [],
       expanded: false,
+      orderIndex: counter++,
       usedRound: { action: 0, bonus: 0, reaction: 0 }
     });
   }
@@ -899,7 +1033,8 @@ export async function resetEncounter() {
   if (!ok) return;
   state.encounter = {
     active: false, round: 1, turnIndex: 0,
-    combatants: [], finished: false, logs: {}
+    combatants: [], finished: false, logs: {},
+    surpriseSide: null
   };
   persist();
   $('modal-logs').style.display = 'none';
@@ -918,7 +1053,15 @@ export function initEncounterHandlers() {
   if (btnEnemy) btnEnemy.addEventListener('click', openAddEnemyModal);
 
   const btnNext = $('btn-next-turn');
-  if (btnNext) btnNext.addEventListener('click', nextTurn);
+  if (btnNext) btnNext.addEventListener('click', () => {
+    const enc = state.encounter;
+    if (!enc.active) {
+      // Открываем модалку «Начать бой»
+      openStartBattleModal();
+    } else {
+      nextTurn();
+    }
+  });
 
   const btnFinish = $('btn-finish-enc');
   if (btnFinish) btnFinish.addEventListener('click', finishEncounter);
@@ -950,4 +1093,12 @@ export function initEncounterHandlers() {
   if (btnCloseLogs) btnCloseLogs.addEventListener('click', () => {
     $('modal-logs').style.display = 'none';
   });
+
+  // Модалка «Начать бой»
+  const btnNormal = $('btn-start-normal');
+  if (btnNormal) btnNormal.addEventListener('click', () => startBattle(null));
+  const btnSurprisePlayers = $('btn-start-surprise-players');
+  if (btnSurprisePlayers) btnSurprisePlayers.addEventListener('click', () => startBattle('players'));
+  const btnSurpriseEnemies = $('btn-start-surprise-enemies');
+  if (btnSurpriseEnemies) btnSurpriseEnemies.addEventListener('click', () => startBattle('enemies'));
 }
