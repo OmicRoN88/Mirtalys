@@ -40,12 +40,16 @@ function isDead(c) { return c.status === 'dead'; }
 function isUnconscious(c) { return c.status === 'unconscious'; }
 function isStable(c) { return c.status === 'stable'; }
 
+// Возвращает true, если существо ЗАСТИГНУТО врасплох (пропускает ход, серое).
+// surpriseSide = какая сторона ходит первой (активна):
+//   'players' -> игроки ходят первыми, враги застигнуты (серые)
+//   'enemies' -> враги ходят первыми, игроки застигнуты (серые)
 function isSurprised(c) {
   const enc = state.encounter;
   if (enc.round !== 1) return false;
   if (!enc.surpriseSide) return false;
-  if (enc.surpriseSide === 'players' && !c.isEnemy) return true;
-  if (enc.surpriseSide === 'enemies' && c.isEnemy) return true;
+  if (enc.surpriseSide === 'players' && c.isEnemy) return true;
+  if (enc.surpriseSide === 'enemies' && !c.isEnemy) return true;
   return false;
 }
 
@@ -95,7 +99,6 @@ function ensureDeathSaves(c) {
    СОРТИРОВКА
    ============================================================ */
 
-// Основная сортировка: по initiative (убывание), при равенстве — по orderIndex.
 function sortByInitiative(arr) {
   return [...arr].sort((a, b) => {
     const ia = a.initiative || 0;
@@ -107,9 +110,7 @@ function sortByInitiative(arr) {
   });
 }
 
-// Сортировка с учётом неожиданности в раунде 1:
-// если surpriseSide = 'players' — сначала игроки, затем враги;
-// если surpriseSide = 'enemies' — сначала враги, затем игроки.
+// В раунде 1 при неожиданности активная сторона идёт первой.
 function sortCombatants(arr) {
   const enc = state.encounter;
   const base = sortByInitiative(arr);
@@ -118,8 +119,7 @@ function sortCombatants(arr) {
   const activeGroup = [];
   const surprisedGroup = [];
   base.forEach(c => {
-    const isSurprisedChar = isSurprised(c);
-    if (isSurprisedChar) surprisedGroup.push(c);
+    if (isSurprised(c)) surprisedGroup.push(c);
     else activeGroup.push(c);
   });
   return [...activeGroup, ...surprisedGroup];
