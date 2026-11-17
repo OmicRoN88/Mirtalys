@@ -48,6 +48,20 @@
   </div>
 </div>
 
+<!-- ================= МОДАЛКА: НАЧАТЬ БОЙ ================= -->
+<div class="modal-overlay" id="modal-start-battle" style="display:none;">
+  <div class="modal">
+    <button class="modal-close" data-close>×</button>
+    <h2>Начать бой</h2>
+    <p style="margin-bottom: 16px;">Это раунд неожиданности?</p>
+    <div class="actions" style="flex-direction: column; gap: 8px;">
+      <button id="btn-start-normal" class="secondary" style="width: 100%;">Обычный бой</button>
+      <button id="btn-start-surprise-players" class="success-btn" style="width: 100%;">Неожиданный бой. Игроки</button>
+      <button id="btn-start-surprise-enemies" class="danger" style="width: 100%;">Неожиданный бой. Враги</button>
+    </div>
+  </div>
+</div>
+
 <div class="modal-overlay" id="modal-damage" style="display:none;">
   <div class="modal">
     <button class="modal-close" data-close>×</button>
