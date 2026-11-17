@@ -769,6 +769,20 @@ button.warn:hover { background: #d08030; }
   align-items: baseline;
   margin-bottom: 4px;
 }
+
+/* Инициатива — первая */
+.enc-initiative-inline {
+  display: inline-block;
+  flex-shrink: 0;
+}
+.enc-init-input {
+  width: 52px;
+  text-align: center;
+  font-weight: bold;
+  font-size: 0.95rem;
+  padding: 3px 6px;
+}
+
 .enc-name {
   font-weight: 500;
   font-size: 0.9rem;
@@ -779,16 +793,6 @@ button.warn:hover { background: #d08030; }
   gap: 14px;
   align-items: baseline;
   flex-wrap: wrap;
-}
-.enc-initiative-inline {
-  display: inline-block;
-}
-.enc-init-input {
-  width: 50px;
-  text-align: center;
-  font-weight: bold;
-  font-size: 0.9rem;
-  padding: 3px 6px;
 }
 .enc-stats b {
   font-size: 1.1rem;
@@ -862,7 +866,6 @@ button.warn:hover { background: #d08030; }
 .enc-status.danger { background: rgba(255, 92, 108, 0.2); color: var(--error); }
 .enc-status.muted { background: rgba(138, 138, 160, 0.2); color: var(--text-dim); }
 
-/* Раскрытая карточка: кнопки перемещения слева, контент справа */
 .enc-extra-row {
   display: flex;
   gap: 12px;
