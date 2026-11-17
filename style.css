@@ -748,6 +748,7 @@ button.warn:hover { background: #d08030; }
 .encounter-row.player { border-left: 4px solid var(--success); }
 .encounter-row.enemy { border-left: 4px solid var(--error); }
 .encounter-row.dead { background: #1a1a22; opacity: 0.5; filter: grayscale(100%); }
+.encounter-row.surprised { background: #2a2a30; opacity: 0.6; filter: grayscale(70%); }
 .encounter-row.active.player {
   border: 2px solid var(--success);
   box-shadow: 0 0 10px rgba(74, 222, 128, 0.3);
@@ -757,21 +758,6 @@ button.warn:hover { background: #d08030; }
   border: 2px solid var(--error);
   box-shadow: 0 0 10px rgba(255, 92, 108, 0.3);
   background: rgba(255, 92, 108, 0.05);
-}
-
-.enc-initiative {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 4px;
-  min-width: 50px;
-}
-.enc-init-input {
-  width: 46px;
-  text-align: center;
-  font-weight: bold;
-  font-size: 1rem;
-  padding: 4px;
 }
 
 .enc-main { flex: 1; min-width: 0; }
@@ -793,6 +779,16 @@ button.warn:hover { background: #d08030; }
   gap: 14px;
   align-items: baseline;
   flex-wrap: wrap;
+}
+.enc-initiative-inline {
+  display: inline-block;
+}
+.enc-init-input {
+  width: 50px;
+  text-align: center;
+  font-weight: bold;
+  font-size: 0.9rem;
+  padding: 3px 6px;
 }
 .enc-stats b {
   font-size: 1.1rem;
@@ -864,6 +860,31 @@ button.warn:hover { background: #d08030; }
 }
 .enc-status.warning { background: rgba(255, 184, 107, 0.2); color: var(--warning); }
 .enc-status.danger { background: rgba(255, 92, 108, 0.2); color: var(--error); }
+.enc-status.muted { background: rgba(138, 138, 160, 0.2); color: var(--text-dim); }
+
+/* Раскрытая карточка: кнопки перемещения слева, контент справа */
+.enc-extra-row {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  margin-top: 8px;
+}
+.enc-move-buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex-shrink: 0;
+}
+.enc-move-buttons button {
+  padding: 4px 8px !important;
+  font-size: 0.85rem !important;
+  min-width: 32px;
+  line-height: 1;
+}
+.enc-expanded-content {
+  flex: 1;
+  min-width: 0;
+}
 
 .enc-resources {
   display: flex;
